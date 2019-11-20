@@ -202,6 +202,8 @@ end
 function TerminalTranslateOutput(settings, input)
 local str
 
+if strutil.strlen(settings.term_background) > 0 then input=settings.term_background .. string.gsub(input, "~0", "~0".. settings.term_background) end
+
 str="\r" .. input .. "~>~0"
 return(terminal.format(str))
 end
@@ -574,7 +576,7 @@ end
 function ParseCommandLine(args)
 settings={}
 
-settings.display="~w$(day_name)~0 $(day) $(month_name) ~y$(time)~0 bat:$(bat:1)%~r$(charging:1)~0 $(fs:/)%  mem:$(mem)% load:$(load_percent)% ~b$(ip4address:wlan0)~0"
+settings.display="~w$(day_name)~0 $(day) $(month_name) ~y$(time)~0 bat:$(bat:1)%~r$(charging:1)~0 $(fs:/)%  mem:$(mem)% load:$(load_percent)% ~y$(ip4address:wlan0)~0"
  
 settings.win_width=800
 settings.win_height=40
@@ -630,6 +632,12 @@ end
 settings=ParseCommandLine(arg)
 settings.lookups=LookupsFromDisplay(settings.display)
 S=OpenOutput(settings)
+
+if settings.output=="term" and strutil.strlen(settings.background) > 0
+then
+settings.term_background=string.upper(TranslateColorName(settings.background))	
+end
+
 
 while true
 do
