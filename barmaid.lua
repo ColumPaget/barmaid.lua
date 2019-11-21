@@ -9,6 +9,9 @@ require("sys")
 isc_status=""
 counter=0
 display_values={}
+poll_streams=stream.POLL_IO()
+shell=nil
+stdio=nil
 
 function GetColor(value, color1, val2, color2, val3, color3)
 local color
@@ -205,6 +208,10 @@ local str
 if strutil.strlen(settings.term_background) > 0 then input=settings.term_background .. string.gsub(input, "~0", "~0".. settings.term_background) end
 
 str="\r" .. input .. "~>~0"
+if settings.ypos=="bottom" 
+then 
+str=string.format("\x1b[s\x1b[%d;0H%s\x1b[u", term:length(), str)
+end
 return(terminal.format(str))
 end
 
@@ -281,7 +288,16 @@ then
 	if strutil.strlen(settings.background) > 0 then str=str .. " -B '" .. settings.background .. "'" end
 	S=stream.STREAM(str)
 else
-	S=stream.STREAM("-")
+	stdio=stream.STREAM("-")
+	S=stdio
+	if settings.ypos=="bottom"
+	then
+			term=terminal.TERM(stdio)
+			shell=stream.STREAM("cmd:/bin/sh", "pty")
+			shell:ptysize(term:width(), term:length() -2)
+			poll_streams:add(shell)
+			poll_streams:add(stdio)
+	end
 end
 
 return S
@@ -631,7 +647,7 @@ end
 
 settings=ParseCommandLine(arg)
 settings.lookups=LookupsFromDisplay(settings.display)
-S=OpenOutput(settings)
+Out=OpenOutput(settings)
 
 if settings.output=="term" and strutil.strlen(settings.background) > 0
 then
@@ -639,8 +655,16 @@ settings.term_background=string.upper(TranslateColorName(settings.background))
 end
 
 
+last_time=0
 while true
 do
+
+now=time.secs()
+if now > last_time
+then
+	counter=counter+1
+	last_time=now
+
 	start_ticks=time.millisecs()
 	str=SubstituteDisplayValues(settings)
 --	str=str.."ISC:"..InternetStormStatus()
@@ -648,8 +672,22 @@ do
 	str=TranslateColorStrings(settings, str)
 	end_ticks=time.millisecs()
 
-	S:writeln(str)
-	time.sleep(1)
-	counter=counter+1
+	Out:writeln(str)
+end
+
+
+	S=poll_streams:select(100)
+	if S ~= nil
+	then
+	if S==stdio 
+	then 
+			shell:write(stdio:getch(), 1) 
+	elseif S==shell
+	then
+			stdio:write(shell:getch(), 1) 
+	end
+	end
+
+
 	process.childExited()
 end
