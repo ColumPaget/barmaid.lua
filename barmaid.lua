@@ -12,13 +12,20 @@ display_values={}
 poll_streams=stream.POLL_IO()
 shell=nil
 stdio=nil
+usage_color_map={
+				{value=0, color="~g"},
+				{value=25, color="~y"},
+				{value=75, color="~r"},
+				{value=90, color="~R"}
+}
 
-function GetColor(value, color1, val2, color2, val3, color3)
+
+function AutoColorValue(value, thresholds)
 local color
 
-if value > val3 then color=color3
-elseif value > val2 then color=color2
-else color=color1
+for i,thresh in ipairs(thresholds)
+do
+	if value > thresh.value then color=thresh.color end
 end
 
 return color
@@ -354,13 +361,19 @@ end
 function LookupBatteries()
 local bats, i, bat, perc, color
 local str=""
+local color_map={
+				{value=0, color="~R"},
+				{value=10, color="~r"},
+				{value=25, color="~y"},
+				{value=75, color="~g"}
+}
 
 bats=GetBatteries()
 for i,bat in ipairs(bats)
 do
 	perc=bat.charge * 100 / bat.max
-	color=GetColor(perc, "~r", 25, "~y", 75, "~g")
 
+	color=AutoColorValue(value, color_map)
 	str=str..string.format("%s%d~0", color, math.floor(perc + 0.5))
 	display_values["bat:"..i]=str
 	if bat.status == "Charging" then display_values["charging:"..i]="~~" end
@@ -394,6 +407,7 @@ function LookupPartitions()
 local str, perc, color, toks
 local S
 
+
 S=stream.STREAM("/proc/self/mounts", "r")
 if S ~= nil
 then
@@ -408,10 +422,10 @@ then
 		if fs_type ~= "none" and fs_type ~="cgroups"
 		then
 			perc=math.floor( (filesys.fs_used(fs_mount) * 100 / filesys.fs_size(fs_mount)) + 0.5)
-			color=GetColor(perc, "~g", 25, "~y", 75, "~r")
+			color=AutoColorValue(perc, usage_color_map)
 		end
 
-		display_values["fs:"..fs_mount]=string.format("%s:%s%d~0", fs_mount, color, perc)
+		display_values["fs:"..fs_mount]=string.format("%s%d~0", color, perc)
 
 	str=S:readln()
 	end
@@ -427,6 +441,7 @@ end
 function LookupHostInfo()
 local mem_perc
 
+
 display_values["hostname"]=sys.hostname()
 display_values["kernel"]=sys.release()
 display_values["arch"]=sys.arch()
@@ -436,7 +451,8 @@ display_values["totalmem"]=strutil.toMetric(sys.totalmem())
 display_values["uptime"]=time.formatsecs("%H:%M:%S", sys.uptime())
 
 mem_perc=100.0 - ((sys.freemem() + sys.buffermem()) * 100 / sys.totalmem())
-display_values["mem"]=GetColor(mem_perc, "~g", 25.0, "~y", 80.0, "~r") ..  string.format("%02.1f", mem_perc) .."~0"
+
+display_values["mem"]=AutoColorValue(mem_perc, usage_color_map) ..  string.format("%02.1f", mem_perc) .."~0"
 end
 
 
@@ -492,7 +508,7 @@ str=toks:next()
 display_values["load"]=str
 
 val=(tonumber(str) / display_values["cpu_count"]) * 100.0
-display_values["load_percent"]=GetColor(val, "~g", 33.0, "~y", 75.0, "~r") .. string.format("%02.1f", val) .. "~0"
+display_values["load_percent"]=AutoColorValue(val, usage_color_map) .. string.format("%02.1f", val) .. "~0"
 
 display_values["load5min"]=toks:next()
 display_values["load15min"]=toks:next()
@@ -592,7 +608,7 @@ end
 function ParseCommandLine(args)
 settings={}
 
-settings.display="~w$(day_name)~0 $(day) $(month_name) ~y$(time)~0 bat:$(bat:1)%~r$(charging:1)~0 $(fs:/)%  mem:$(mem)% load:$(load_percent)% ~y$(ip4address:eth0)~0"
+settings.display="~w$(day_name)~0 $(day) $(month_name) ~y$(time)~0 bat:$(bat:1)%~r$(charging:1)~0 fs:$(fs:/)%  mem:$(mem)% load:$(load_percent)% ~y$(ip4address:eth0)~0"
  
 settings.win_width=800
 settings.win_height=40
