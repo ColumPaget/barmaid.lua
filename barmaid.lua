@@ -377,12 +377,15 @@ do
 	str=str..string.format("%s%d~0", color, math.floor(perc + 0.5))
 	display_values["bat:"..i]=str
 	if bat.status == "Charging" then display_values["charging:"..i]="~~" end
+
+	display_values["bats"]=display_values["bats"].." bat:"..i..str.."%"
+	if bat.status == "Charging" then display_values["bats"]=display_values["bats"] .. "~~" end
 end
 
 end
 
 
-function LookupTemperatures()
+function LookupThermal()
 local Glob, str, path
 
 Glob=filesys.GLOB("/sys/class/thermal/thermal_zone*")
@@ -401,6 +404,49 @@ end
 end
 
 
+function LookupCoreTemp(dir)
+local Glob, str, path, val
+local temp=0
+
+Glob=filesys.GLOB(dir.. "/temp*input")
+path=Glob:next()
+while path ~= nil 
+do
+	str=SysReadFile(path)
+	val=tonumber(str) / 1000
+	if val > temp then temp=val end
+	path=Glob:next()
+end
+
+return temp
+end	
+
+
+function LookupHWmon()
+local Glob, str, path
+
+Glob=filesys.GLOB("/sys/class/hwmon/*")
+path=Glob:next()
+while path ~= nil 
+do
+	if filesys.exists(path.."/name") == true
+	then
+	str=SysReadFile(path.."/name")
+	if str == "coretemp"
+	then
+		display_values["cpu_temp"]=LookupCoreTemp(path)
+	end
+	end
+
+	path=Glob:next()
+end
+
+end
+
+function LookupTemperatures()
+LookupThermal()
+LookupHWmon()
+end
 
 
 function LookupPartitions()
@@ -608,7 +654,7 @@ end
 function ParseCommandLine(args)
 settings={}
 
-settings.display="~w$(day_name)~0 $(day) $(month_name) ~y$(time)~0 bat:$(bat:1)%~r$(charging:1)~0 fs:$(fs:/)%  mem:$(mem)% load:$(load_percent)% ~y$(ip4address:eth0)~0"
+settings.display="~w$(day_name)~0 $(day) $(month_name) ~y$(time)~0 $(bats) fs:$(fs:/)%  mem:$(mem)% load:$(load_percent)% ~y$(ip4address:eth0)~0"
  
 settings.win_width=800
 settings.win_height=40
