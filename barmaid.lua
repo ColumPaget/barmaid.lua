@@ -368,17 +368,19 @@ local color_map={
 				{value=75, color="~g"}
 }
 
+display_values["bats"]=""
 bats=GetBatteries()
+
 for i,bat in ipairs(bats)
 do
 	perc=bat.charge * 100 / bat.max
 
-	color=AutoColorValue(value, color_map)
+	color=AutoColorValue(perc, color_map)
 	str=str..string.format("%s%d~0", color, math.floor(perc + 0.5))
 	display_values["bat:"..i]=str
 	if bat.status == "Charging" then display_values["charging:"..i]="~~" end
 
-	display_values["bats"]=display_values["bats"].." bat:"..i..str.."%"
+	display_values["bats"]=display_values["bats"].." bat"..i..":"..str.."%"
 	if bat.status == "Charging" then display_values["bats"]=display_values["bats"] .. "~~" end
 end
 
@@ -654,7 +656,7 @@ end
 function ParseCommandLine(args)
 settings={}
 
-settings.display="~w$(day_name)~0 $(day) $(month_name) ~y$(time)~0 $(bats) fs:$(fs:/)%  mem:$(mem)% load:$(load_percent)% ~y$(ip4address:eth0)~0"
+settings.display="~w$(day_name)~0 $(day) $(month_name) ~y$(time)~0 $(bats) fs:$(fs:/)%  mem:$(mem)% load:$(load_percent)% $(cpu_temp)c ~y$(ip4address:eth0)~0"
  
 settings.win_width=800
 settings.win_height=40
