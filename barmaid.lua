@@ -339,7 +339,7 @@ str=Glob:next()
 while str ~= nil 
 do
 	name=filesys.basename(str)
-	if filesys.exists(str.."/charge_full") > 0
+	if filesys.exists(str.."/charge_full") ==true
 	then
 		bat=GetBattery(name, str)
 		table.insert(bats, bat)
@@ -592,7 +592,7 @@ end
 function ParseCommandLine(args)
 settings={}
 
-settings.display="~w$(day_name)~0 $(day) $(month_name) ~y$(time)~0 bat:$(bat:1)%~r$(charging:1)~0 $(fs:/)%  mem:$(mem)% load:$(load_percent)% ~y$(ip4address:wlan0)~0"
+settings.display="~w$(day_name)~0 $(day) $(month_name) ~y$(time)~0 bat:$(bat:1)%~r$(charging:1)~0 $(fs:/)%  mem:$(mem)% load:$(load_percent)% ~y$(ip4address:eth0)~0"
  
 settings.win_width=800
 settings.win_height=40
