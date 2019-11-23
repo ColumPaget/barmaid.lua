@@ -797,7 +797,7 @@ then
 
 	update_display=false
 	Out:writeln(str)
-	shell:flush()
+	Out:flush()
 end
 
 
