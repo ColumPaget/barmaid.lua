@@ -6,12 +6,17 @@ require("process")
 require("terminal")
 require("sys")
 
+SHELL_OKAY=0
+SHELL_CLOSED=1
+SHELL_CLS=2
+
 isc_status=""
 counter=0
 display_values={}
 poll_streams=stream.POLL_IO()
 shell=nil
 stdio=nil
+
 usage_color_map={
 				{value=0, color="~g"},
 				{value=25, color="~y"},
@@ -26,6 +31,8 @@ thermal_color_map={
 				{value=60, color="~r"},
 				{value=80, color="~R"}
 }
+
+
 
 
 function AutoColorValue(value, thresholds)
@@ -225,7 +232,7 @@ if strutil.strlen(settings.term_background) > 0 then input=settings.term_backgro
 str="\r" .. input .. "~>~0"
 if settings.ypos=="bottom" 
 then 
-str=string.format("\x1b[s\x1b[%d;0H%s\x1b[u", term:length(), str)
+	str=string.format("\x1b[s\x1b[%d;0H%s\x1b[u", term:length(), str)
 end
 return(terminal.format(str))
 end
@@ -308,8 +315,11 @@ else
 	if settings.ypos=="bottom"
 	then
 			term=terminal.TERM(stdio)
-			shell=stream.STREAM("cmd:/bin/sh", "pty")
+			term:scrollingregion(0, term:length() -1)
+			term:clear()
+			shell=stream.STREAM("cmd:/bin/sh", "pty echo")
 			shell:ptysize(term:width(), term:length() -2)
+			shell:timeout(10)
 			poll_streams:add(shell)
 			poll_streams:add(stdio)
 	end
@@ -455,10 +465,13 @@ end
 
 end
 
+
+
 function LookupTemperatures()
 LookupThermal()
 LookupHWmon()
 end
+
 
 
 function LookupPartitions()
@@ -496,9 +509,10 @@ return str
 end
 
 
+
+
 function LookupHostInfo()
 local mem_perc
-
 
 display_values["hostname"]=sys.hostname()
 display_values["kernel"]=sys.release()
@@ -719,6 +733,39 @@ return settings
 end
 
 
+--this function reads from the pty/shell if we are in terminal mode and have 
+--spawned off a subshell to decorate with a bar
+function ReadFromPty()
+local ch, seq_cls_len
+local seq_cls=string.char(27) .. "[2J"
+local seq_count=1
+local retval=SHELL_OKAY
+
+	seq_cls_len=string.len(seq_cls)
+	ch=shell:readbyte();
+	if ch ==-1 then return SHELL_CLOSED end
+
+	while ch > -1
+	do
+		stdio:write(string.char(ch), 1) 
+
+		if seq_count >= seq_cls_len 
+		then
+			retval=SHELL_CLS
+		elseif string.sub(seq_cls, 1, 1) == string.char(ch) 
+		then
+			seq_count=seq_count+1
+		end
+
+		ch=shell:readbyte();
+	end
+
+	shell:flush()
+	return retval
+end
+
+
+
 settings=ParseCommandLine(arg)
 settings.lookups=LookupsFromDisplay(settings.display)
 Out=OpenOutput(settings)
@@ -734,7 +781,9 @@ while true
 do
 
 now=time.secs()
-if now > last_time
+if now > last_time then update_display=true end
+
+if update_display == true
 then
 	counter=counter+1
 	last_time=now
@@ -746,22 +795,29 @@ then
 	str=TranslateColorStrings(settings, str)
 	end_ticks=time.millisecs()
 
+	update_display=false
 	Out:writeln(str)
+	shell:flush()
 end
 
 
-	S=poll_streams:select(100)
-	if S ~= nil
+S=poll_streams:select(100)
+if S ~= nil
 	then
 	if S==stdio 
 	then 
 			shell:write(stdio:getch(), 1) 
 	elseif S==shell
 	then
-			stdio:write(shell:getch(), 1) 
+		shell_result=ReadFromPty()
+		if shell_result==SHELL_CLOSED then break end
+		if shell_result==SHELL_CLS then update_display=true end
 	end
-	end
-
+end
 
 	process.childExited()
 end
+
+
+if settings.ypos=="bottom" then term:clear() end
+
