@@ -19,6 +19,14 @@ usage_color_map={
 				{value=90, color="~R"}
 }
 
+thermal_color_map={
+				{value=0, color="~c"},
+				{value=20, color="~g"},
+				{value=40, color="~y"},
+				{value=60, color="~r"},
+				{value=80, color="~R"}
+}
+
 
 function AutoColorValue(value, thresholds)
 local color
@@ -388,7 +396,7 @@ end
 
 
 function LookupThermal()
-local Glob, str, path
+local Glob, str, path, val
 
 Glob=filesys.GLOB("/sys/class/thermal/thermal_zone*")
 path=Glob:next()
@@ -398,7 +406,8 @@ do
 	if str == "x86_pkg_temp"
 	then
 		str=SysReadFile(path.."/temp")
-		display_values["cpu_temp"]=tonumber(str) / 1000.0
+		val=tonumber(str) / 1000.0
+		display_values["cpu_temp"]=AutoColorValue(val, thermal_color_map)..val.."~0"
 	end
 	path=Glob:next()
 end
@@ -425,7 +434,7 @@ end
 
 
 function LookupHWmon()
-local Glob, str, path
+local Glob, str, path, val
 
 Glob=filesys.GLOB("/sys/class/hwmon/*")
 path=Glob:next()
@@ -436,7 +445,8 @@ do
 	str=SysReadFile(path.."/name")
 	if str == "coretemp"
 	then
-		display_values["cpu_temp"]=LookupCoreTemp(path)
+		val=LookupCoreTemp(path)
+		display_values["cpu_temp"]=AutoColorValue(val, thermal_color_map)..val.."~0"
 	end
 	end
 
