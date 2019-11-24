@@ -114,3 +114,21 @@ If barmaid is run in a terminal with the `-y` argument set to `bottom`, like so:
 ```
 
 Then a bar will be displayed at the bottom of the terminal, with normal terminal output being limited to the lines above it. This is an experimental feature. It's been seen to work in xterm and qterminal, though 'vi' in xterm seems to have some cosmetic issues.
+
+
+SCREENSHOTS
+===========
+
+DZen
+![dzen2 bar](dzen2-barmaid.png)
+
+Lemonbar
+![xterm bar](lemonbar-barmaid.png)
+
+Xterm
+![xterm bar](xterm-barmaid.png)
+
+QTerminal
+![xterm bar](qterminal-barmaid.png)
+
+
