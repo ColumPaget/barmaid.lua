@@ -36,7 +36,7 @@ thermal_color_map={
 
 
 function AutoColorValue(value, thresholds)
-local color
+local color=""
 
 for i,thresh in ipairs(thresholds)
 do
@@ -228,6 +228,7 @@ function TerminalTranslateOutput(settings, input)
 local str
 
 if strutil.strlen(settings.term_background) > 0 then input=settings.term_background .. string.gsub(input, "~0", "~0".. settings.term_background) end
+if strutil.strlen(settings.term_foreground) > 0 then input=settings.term_foreground .. string.gsub(input, "~0", "~0".. settings.term_foreground) end
 
 str="\r" .. input .. "~>~0"
 if settings.ypos=="bottom" 
@@ -509,22 +510,71 @@ return str
 end
 
 
+function LookupMemInfo()
+local S, str, toks
+local totalmem=0
+local availmem=0
+local mem_perc
+
+S=stream.STREAM("/proc/meminfo", "r");
+if S~= nil
+then
+	str=S:readln()
+	while str ~= nil
+	do
+	toks=strutil.TOKENIZER(str, ":")
+	name=toks:next()
+	value=strutil.trim(toks:next())
+
+	toks=strutil.TOKENIZER(value, "\\S")
+	value=toks:next()
+	if name=="MemTotal" then totalmem=tonumber(value) end
+	if name=="MemAvailable" then availmem=tonumber(value) end
+	str=S:readln()
+	end
+	S:close()
+else
+	availmem=sys.freemem() + sys.buffermem()
+	totalmem=sys.totalmem()
+end
+
+display_values["usedmem"]=strutil.toMetric(totalmem-availmem)
+display_values["freemem"]=strutil.toMetric(availmem)
+display_values["totalmem"]=strutil.toMetric(totalmem)
+
+mem_perc=100.0 - (availmem * 100 / totalmem)
+display_values["mem"]=AutoColorValue(mem_perc, usage_color_map) ..  string.format("%02.1f", mem_perc) .."~0"
+
+
+--do all the same for swap
+availmem=sys.freeswap()
+totalmem=sys.totalswap()
+display_values["usedswap"]=strutil.toMetric(totalmem-availmem)
+display_values["freeswap"]=strutil.toMetric(availmem)
+display_values["totalswap"]=strutil.toMetric(totalmem)
+
+if totalmem > 0 
+then
+	mem_perc=100.0 - (availmem * 100 / totalmem)
+else
+	mem_perc=0
+end
+
+display_values["swap"]=AutoColorValue(mem_perc, usage_color_map) ..  string.format("%02.1f", mem_perc) .."~0"
+
+
+end
+
 
 
 function LookupHostInfo()
-local mem_perc
 
 display_values["hostname"]=sys.hostname()
 display_values["kernel"]=sys.release()
 display_values["arch"]=sys.arch()
 display_values["os"]=sys.type()
-display_values["freemem"]=strutil.toMetric(sys.freemem() + sys.buffermem())
-display_values["totalmem"]=strutil.toMetric(sys.totalmem())
 display_values["uptime"]=time.formatsecs("%H:%M:%S", sys.uptime())
-
-mem_perc=100.0 - ((sys.freemem() + sys.buffermem()) * 100 / sys.totalmem())
-
-display_values["mem"]=AutoColorValue(mem_perc, usage_color_map) ..  string.format("%02.1f", mem_perc) .."~0"
+LookupMemInfo();
 end
 
 
@@ -592,7 +642,7 @@ function LookupsFromDisplay(display)
 local lookups={}
 local names
 
-LookupHostInfo()
+table.insert(lookups, LookupHostInfo)
 
 for i,str in ipairs( {"$%(time%)", "$%(date%)", "$%(day_name%)", "$%(day%)", "$%(month%)", "$%(month_name%)", "$%(year%)", "$%(hours%)", "$%(minutes%)", "$%(mins%)", "$%(seconds%)", "$%(secs%)"} )
 do
@@ -700,7 +750,7 @@ do
 	elseif str=="-h" then 
 		settings.win_height=args[i+1]
 		args[i+1]=""
-	elseif str=="-t" then
+	elseif str=="-t" or "-type" then
 		settings.output=args[i+1]
 		args[i+1]=""
 	elseif str=="-fn" or str=="-font" then
@@ -726,6 +776,7 @@ do
 	end	
 end
 
+if settings.output=="terminal" then settings.output="term" end
 
 SelectOutput(settings)
 
@@ -770,9 +821,17 @@ settings=ParseCommandLine(arg)
 settings.lookups=LookupsFromDisplay(settings.display)
 Out=OpenOutput(settings)
 
-if settings.output=="term" and strutil.strlen(settings.background) > 0
+if settings.output=="term" 
 then
-settings.term_background=string.upper(TranslateColorName(settings.background))	
+	if strutil.strlen(settings.foreground) > 0
+	then
+		settings.term_foreground=TranslateColorName(settings.foreground)
+	end
+
+	if strutil.strlen(settings.background) > 0
+	then
+		settings.term_background=string.upper(TranslateColorName(settings.background))	
+	end
 end
 
 
