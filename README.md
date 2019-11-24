@@ -122,11 +122,14 @@ SCREENSHOTS
 DZen
 ![dzen2 bar](dzen2-barmaid.png)
 
+
 Lemonbar
 ![xterm bar](lemonbar-barmaid.png)
 
+
 Xterm
 ![xterm bar](xterm-barmaid.png)
+
 
 QTerminal
 ![xterm bar](qterminal-barmaid.png)
