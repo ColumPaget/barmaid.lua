@@ -119,19 +119,19 @@ Then a bar will be displayed at the bottom of the terminal, with normal terminal
 SCREENSHOTS
 ===========
 
-DZen
+## DZen
 ![dzen2 bar](dzen2-barmaid.png)
 
 
-Lemonbar
+## Lemonbar
 ![xterm bar](lemonbar-barmaid.png)
 
 
-Xterm
+## Xterm
 ![xterm bar](xterm-barmaid.png)
 
 
-QTerminal
+## QTerminal
 ![xterm bar](qterminal-barmaid.png)
 
 
