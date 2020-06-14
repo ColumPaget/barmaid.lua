@@ -497,7 +497,7 @@ then
 			color=AutoColorValue(perc, usage_color_map)
 		end
 
-		display_values["fs:"..fs_mount]=string.format("%s%d~0", color, perc)
+		display_values["fs:"..fs_mount]=string.format("%s%1.1f~0", color, perc)
 
 	str=S:readln()
 	end
@@ -602,6 +602,15 @@ then
 	display_values["ip4address:"..str]=sys.ip4address(str)
 	display_values["ip4netmask:"..str]=sys.ip4netmask(str)
 	display_values["ip4broadcast:"..str]=sys.ip4broadcast(str)
+
+	--eventually we will find the default route and decide the default
+	--interface from that, but for now this hack is often good enough
+	if str ~= "lo"
+	then
+	display_values["ip4address:default"]=sys.ip4address(str)
+	display_values["ip4netmask:default"]=sys.ip4netmask(str)
+	display_values["ip4broadcast:default"]=sys.ip4broadcast(str)
+	end
 end
 
 str=toks:next()
@@ -741,7 +750,7 @@ end
 function ParseCommandLine(args)
 settings={}
 
-settings.display="~w$(day_name)~0 $(day) $(month_name) ~y$(time)~0 $(bats) fs:$(fs:/)%  mem:$(mem)% load:$(load_percent)% $(cpu_temp)c ~y$(ip4address:eth0)~0"
+settings.display="~w$(day_name)~0 $(day) $(month_name) ~y$(time)~0 $(bats) fs:$(fs:/)%  mem:$(mem)% load:$(load_percent)% cputemp:$(cpu_temp)c ~y$(ip4address:default)~0"
  
 settings.win_width=800
 settings.win_height=40
