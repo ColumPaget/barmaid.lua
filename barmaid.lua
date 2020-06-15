@@ -224,6 +224,31 @@ return(outstr)
 end
 
 
+function XtermTitleTranslateOutput(str)
+local outstr=""
+local i=1
+local len, char
+
+outstr="\x1b]2;"
+len=strutil.strlen(str)
+while i <= len
+do
+	char=string.sub(str, i, i)
+	if char=="~" 
+	then 
+		i=i+1
+		char=string.sub(str, i, i)		
+		if char=="~" then outstr=outstr.."~" end
+	else outstr=outstr..char
+	end
+
+	i=i+1
+end
+outstr=outstr.."\x07"
+return(outstr)
+end
+
+
 function TerminalTranslateOutput(settings, input)
 local str
 
@@ -248,6 +273,9 @@ local str
 	elseif settings.output=="lemonbar"
 	then
 		return(LemonbarTranslateColorStrings(input).."\n")
+	elseif settings.output=="xterm"
+	then
+		return(XtermTitleTranslateOutput(input))
 	else
 		return(TerminalTranslateOutput(settings, input))
 	end
@@ -290,6 +318,31 @@ local str, path
 end
 
 
+-- Before this is function is called, the user is running a shell on a pty. Then they run barmaid. barmaid then opens a 
+-- new shell in a pty, thus 'wrapping' the terminal/shell/pty and interjecting itself between the user and the shell/pty. 
+-- Barmaid can now inject text and escape sequences into the stream of characters coming from the shell, allowing it to 
+-- decorate the terminal by using escape sequences to set the xterm title, or create a text bar at the bottom of the screen.
+
+function WrapTerminal(steal_lines)
+-- stdio, shell and term are all global because
+-- we access them on events
+
+  stdio=stream.STREAM("-")
+	shell=stream.STREAM("cmd:/bin/sh", "pty echo")
+	term=terminal.TERM(stdio)
+	if (steal_lines > 0)
+	then	
+		term:scrollingregion(0, term:length() -1)
+		term:clear()
+	end
+
+	shell:ptysize(term:width(), term:length() - steal_lines)
+	shell:timeout(10)
+	poll_streams:add(shell)
+	poll_streams:add(stdio)
+	return stdio
+end
+
 
 function OpenOutput(settings)
 local width, height, xpos, S
@@ -310,19 +363,16 @@ then
 	if strutil.strlen(settings.foreground) > 0 then str=str .. " -F '" .. settings.foreground .. "'" end
 	if strutil.strlen(settings.background) > 0 then str=str .. " -B '" .. settings.background .. "'" end
 	S=stream.STREAM(str)
-else
-	stdio=stream.STREAM("-")
-	S=stdio
-	if settings.ypos=="bottom"
+elseif settings.output=="xterm" -- put bar in xterm title by wrapping terminal
+then
+		S=WrapTerminal(0)
+else 
+	if settings.ypos=="bottom" --put bar at bottom of screen, wrap terminal
 	then
-			term=terminal.TERM(stdio)
-			term:scrollingregion(0, term:length() -1)
-			term:clear()
-			shell=stream.STREAM("cmd:/bin/sh", "pty echo")
-			shell:ptysize(term:width(), term:length() -2)
-			shell:timeout(10)
-			poll_streams:add(shell)
-			poll_streams:add(stdio)
+		-- for some reason we have to steal two lines for this to work at all
+		S=WrapTerminal(2)
+	else
+		S=stream.STREAM("-")
 	end
 end
 
