@@ -366,12 +366,12 @@ then
 	S=stream.STREAM(str)
 elseif settings.output=="xterm" -- put bar in xterm title by wrapping terminal
 then
-		S=WrapTerminal(0)
+		S=WrapTerminal(settings.steal_lines)
 else 
 	if settings.ypos=="bottom" --put bar at bottom of screen, wrap terminal
 	then
 		-- for some reason we have to steal two lines for this to work at all
-		S=WrapTerminal(2)
+		S=WrapTerminal(settings.steal_lines)
 	else
 		S=stream.STREAM("-")
 	end
@@ -995,6 +995,7 @@ settings.foreground=""
 settings.background=""
 settings.xpos="center"
 settings.ypos=""
+settings.steal_lines=0
 
 for i,str in ipairs(args)
 do
@@ -1041,6 +1042,7 @@ do
 end
 
 if settings.output=="terminal" then settings.output="term" end
+if settings.output=="term" then settings.steal_lines=2 end
 SelectOutput(settings)
 
 return settings
@@ -1101,42 +1103,69 @@ end
 last_time=0
 while true
 do
-
-now=time.secs()
-if now > last_time then update_display=true end
-
-if update_display == true
-then
-	counter=counter+1
-	last_time=now
-
-	start_ticks=time.millisecs()
-	str=SubstituteDisplayValues(settings)
---	str=str.."ISC:"..InternetStormStatus()
-
-	str=TranslateColorStrings(settings, str)
-	end_ticks=time.millisecs()
-
-	update_display=false
-	Out:writeln(str)
-	Out:flush()
-end
-
-
-S=poll_streams:select(100)
-if S ~= nil
+	
+	now=time.secs()
+	if now > last_time then update_display=true end
+	
+	if update_display == true
 	then
-	if S==stdio 
-	then 
-			shell:write(stdio:getch(), 1) 
-	elseif S==shell
-	then
-		shell_result=ReadFromPty()
-		if shell_result==SHELL_CLOSED then break end
-		if shell_result==SHELL_CLS then update_display=true end
+		counter=counter+1
+		last_time=now
+	
+		start_ticks=time.millisecs()
+		str=SubstituteDisplayValues(settings)
+	--	str=str.."ISC:"..InternetStormStatus()
+	
+		str=TranslateColorStrings(settings, str)
+		end_ticks=time.millisecs()
+	
+		update_display=false
+		Out:writeln(str)
+		Out:flush()
 	end
-end
+	
+	
+	-- if we are talking to a shell in a pty  and
+	-- if we have a recent enough libUseful-lua to support signals, then
+	-- watch for sigwinch (signal for 'window size changed') and sig int (ctrl-c)
+	if shell ~= nil
+	then
+	if process.SIGWINCH ~= nil then process.sigwatch(process.SIGWINCH) end
+	if process.SIGINT ~= nil then process.sigwatch(process.SIGINT) end
+	end
+	
+	S=poll_streams:select(100)
+	if S ~= nil
+		then
+		if S==stdio 
+		then 
+				shell:write(stdio:getch(), 1) 
+		elseif S==shell
+		then
+			shell_result=ReadFromPty()
+			if shell_result==SHELL_CLOSED then break end
+			if shell_result==SHELL_CLS then update_display=true end
+		end
+	end
 
+	-- if we are talking to a shell in a pty (we are in xterm or terminal mode) then
+	-- there are signals that we must propgate to the pty
+	if shell ~= nil
+	then
+
+	if process.SIGWINCH ~= nil and process.sigcheck(process.SIGWINCH) 
+	then
+		shell:ptysize(term:width(), term:length() - settings.steal_lines)
+  end
+
+	if process.SIGINT ~= nil and process.sigcheck(process.SIGINT) 
+	then
+		shell:write("\x03",1)
+  end
+
+	end
+
+	-- if any child processes have exited, then collect them here
 	process.childExited()
 end
 
