@@ -1,10 +1,10 @@
-Barmaid.lua - a status bar tool for dzen2, lemonbar and the terminal
+Barmaid.lua - a status bar tool for dzen2, lemonbar, xterm titles and ansi terminal
 ====================================================================
 
 SYNOPSIS
 ========
 
-barmaid.lua is a status-bar generation program written in lua using libUseful-lua. It can generate output suitable for dzen2, lemonbar and the terminal. It can display info on date, time, system load, memory usage, partition usage, cpu usage, ip4 address/netmask/broadcast, hostname, kernel, architecture, ostype, uptime, cpu count, battery level, and cpu temperature. No external programs are run to generate this data, so barmaid's resource usage should be low. Unfortuantely, as barmaid pulls a lot of data from /proc and /sys, it's a mostly linux-only program.
+barmaid.lua is a status-bar generation program written in lua using libUseful-lua. It can generate output suitable for dzen2, lemonbar, xterm title-bars and the terminal. It can display info on date, time, system load, memory usage, partition usage, cpu usage, ip4 address/netmask/broadcast, hostname, kernel, architecture, ostype, uptime, cpu count, battery level, and cpu temperature. No external programs are run to generate this data, so barmaid's resource usage should be low. Unfortuantely, as barmaid pulls a lot of data from /proc and /sys, it's a mostly linux-only program.
 
 INSTALL
 =======
@@ -18,13 +18,15 @@ USAGE
 lua barmaid.lua [-t output_type] [-type output_type] [-x xpos] [-y ypos] [-w width] [-h height] [-bg color] [-fg color] [-fn font] [-font font] [format string]
 ```
 
-the `-t` or `-type` option sets the output type, which can be 'dzen2', 'lemonbar', 'terminal' or 'term'. 
+online help can be called up with 'lua barmaid.lua -help' 
 
-The `-x`, `-y`, `-w` and `-h` options set the x and y position of the bar, and its width and height, in pixels. The `-x` position option can also accept 'left', 'right' and 'center' as screen positions. The `-y` option can accept `top` and `bottom`, with the `bottom` argument causing special behavior in terminal mode (see below).
+the `-t` or `-type` option sets the output type, which can be 'dzen2', 'lemonbar', 'xterm', 'terminal' or 'term'. 
 
-The `-bg` and `-fg` options set the foreground and background colors of the bar, which (accept for terminal mode) is expressed in rrggbb hexadecimal format with or without a leading '#' (if using a '#' you'll have to put the color string in single-quotes or the shell will treat it as a comment). In terminal mode colors are expressed by name, such as 'blue', 'red' etc.
+The `-x`, `-y`, `-w` and `-h` options set the x and y position of the bar, and its width and height, in pixels. The `-x` position option can also accept 'left', 'right' and 'center' as screen positions. The `-y` option can accept `top` and `bottom`, with the `bottom` argument causing special behavior in terminal mode (see below). None of these work in 'xterm' mode.
 
-`-fn` or `-font` set the font to use, this can differ a bit in format with dzen2 accepting short fontconfig names (use `fc-list` to list these), whereas lemonbar uses old-style X11 font names (use `xlsfonts` to see a list of these for your system).
+The `-bg` and `-fg` options set the foreground and background colors of the bar, which (accept for terminal mode) is expressed in rrggbb hexadecimal format with or without a leading '#' (if using a '#' you'll have to put the color string in single-quotes or the shell will treat it as a comment). In terminal mode colors are expressed by name, such as 'blue', 'red' etc. Colors are sadly not available in xterm mode.
+
+`-fn` or `-font` set the font to use, this can differ a bit in format with dzen2 accepting short fontconfig names (use `fc-list` to list these), whereas lemonbar uses old-style X11 font names (use `xlsfonts` to see a list of these for your system). Again, this feature is not available for xterm titles.
 
 Finally the `format string` is the string to display. Values within `$()` will be substituted by the program with the appropriate data, like this:
 
@@ -91,17 +93,20 @@ bat:           percentage remaining battery. This requires a battery number suff
 charging:      returns the character '~' (to look like an 'AC' symbol) if battery is charging. Requires a battery number suffix
 bats           info for all batteries. If no batteries present, this will be blank.
 fs:            filesystem use percent. Requires a filesystem mount suffix, so `$(fs:/home)` for filesystem on /home
+load_percent   system percentage load/cpu usage
+load           instantaneous load/cpu usage in 'top' format
+load1min       1min load in 'top' format
+load5min       5min load in 'top' format
+load15min      15min load in 'top' format
 ip4address:    ip4address. Requires a network interface suffix, e.g. `$(ip4address:eth0)`
 ip4netmask:    ip4address. Requires a network interface suffix, e.g. `$(ip4address:eth0)`
 ip4broadcast:  ip4address. Requires a network interface suffix, e.g. `$(ip4address:eth0)`
-load_percent   system percentage load
-load           1min load in 'top' format
-load5min       5min load in 'top' format
-local15min     15min load in 'top' format
 
 ```
 
-Please note, any value that has ':' at the end, takes an argument, like `bat:1` or `ip4address:eth0`
+Please note, any value that has ':' at the end, takes an argument, like `bat:1` or `ip4address:eth0`.
+
+The 'ip4' values have a special case where the interface is specified as 'default' e.g. 'ip4address:default'. In this case details are returned for the first interface that isn't the local interface and has an ip address. 
 
 
 TERMINAL BOTTOM BAR
@@ -116,6 +121,7 @@ If barmaid is run in a terminal with the `-y` argument set to `bottom`, like so:
 Then a bar will be displayed at the bottom of the terminal, with normal terminal output being limited to the lines above it. This is an experimental feature. It's been seen to work in xterm and qterminal, though 'vi' in xterm seems to have some cosmetic issues.
 
 
+
 SCREENSHOTS
 ===========
 
@@ -124,14 +130,14 @@ SCREENSHOTS
 
 
 ## Lemonbar
-![xterm bar](lemonbar-barmaid.png)
+![lemonbar bar](lemonbar-barmaid.png)
 
 
 ## Xterm
-![xterm bar](xterm-barmaid.png)
+![terminal bar in xterm](xterm-barmaid.png)
 
 
 ## QTerminal
-![xterm bar](qterminal-barmaid.png)
+![terminal bar in qterminal](qterminal-barmaid.png)
 
 

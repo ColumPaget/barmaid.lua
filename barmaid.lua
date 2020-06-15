@@ -10,6 +10,7 @@ SHELL_OKAY=0
 SHELL_CLOSED=1
 SHELL_CLS=2
 
+version="2.0"
 isc_status=""
 counter=0
 display_values={}
@@ -616,6 +617,119 @@ display_values["swap"]=AutoColorValue(mem_perc, usage_color_map) ..  string.form
 end
 
 
+-- we can get cpu count from /proc/stat
+--[[
+function LookupCpus()
+local S, str
+local cpu_count=0
+
+S=stream.STREAM("/proc/cpuinfo", "r")
+if S ~= nil
+then
+	str=S:readln()
+	while str ~= nil
+	do
+		if string.sub(str, 1, 9)=="processor" then cpu_count=cpu_count+1 end
+		str=S:readln()
+	end
+	S:close()
+end
+
+display_values["cpu_count"]=cpu_count
+
+end
+]]--
+
+
+
+function ReadCpuUsageLine(toks)
+local total=0
+local count=0
+local item, val
+
+item=toks:next()
+while item ~= nil
+do
+      val=tonumber(item)
+			if val ~= nil
+			then
+			-- add up user/system/kernel etc, INCLUDING IDLE, to give 'total'
+      total=total + val
+
+			-- 3rd item along is 'idle'
+      if count==3 then idle=val end
+
+      count=count+1
+			end
+
+      item=toks:next()
+end
+
+return total-idle, total
+end
+
+
+function CpuUsage()
+local key, str
+local S, toks, item
+local used, total
+local cpu_count=0
+
+
+S=stream.STREAM("/proc/stat", "r")
+if S ~= nil
+then
+  str=S:readln()
+  while str ~= nil
+  do
+    toks=strutil.TOKENIZER(str, " ")
+    key=toks:next()
+    if key=="cpu"
+    then
+    	key=toks:next()
+			used,total=ReadCpuUsageLine(toks)
+    elseif string.match(key, "^cpu[0-9]") ~= nil
+		then
+			cpu_count=cpu_count+1
+    end
+    str=S:readln()
+  end
+  S:close()
+
+	display_values["cpu_count"]=cpu_count
+	if display_values["cpu_last_used"] ~= nil
+	then
+	val=(used - tonumber(display_values["cpu_last_used"])) / (total - display_values["cpu_last_total"])
+	display_values["load"]=string.format("%02.1f", val * cpu_count)
+	display_values["load_percent"]=AutoColorValue(val, usage_color_map) .. string.format("%02.1f", val * 100.0) .. "~0"
+	else
+	display_values["load"]="---"
+	display_values["load_percent"]="---"
+	end
+
+	display_values["cpu_last_used"]=used
+	display_values["cpu_last_total"]=total
+else
+	print("FAIL TO OPEN /proc/stat")
+end
+
+end
+
+
+function LookupLoad()
+local toks, str, val
+
+str=SysReadFile("/proc/loadavg")
+toks=strutil.TOKENIZER(str, "\\S")
+
+str=toks:next()
+display_values["load1min"]=toks:next()
+display_values["load5min"]=toks:next()
+display_values["load15min"]=toks:next()
+
+end
+
+
 
 function LookupHostInfo()
 local val
@@ -638,6 +752,8 @@ end
 
 LookupMemInfo();
 end
+
+
 
 function LookupIPv4()
 local str, toks
@@ -669,45 +785,10 @@ end
 end
 
 
-function LookupCpus()
-local S, str
-local cpu_count=0
-
-S=stream.STREAM("/proc/cpuinfo", "r")
-if S ~= nil
-then
-	str=S:readln()
-	while str ~= nil
-	do
-		if string.sub(str, 1, 9)=="processor" then cpu_count=cpu_count+1 end
-		str=S:readln()
-	end
-	S:close()
-end
-
-display_values["cpu_count"]=cpu_count
-
-end
 
 
-function LookupLoad()
-local toks, str, val
-
-str=SysReadFile("/proc/loadavg")
-toks=strutil.TOKENIZER(str, "\\S")
-
-str=toks:next()
-display_values["load"]=str
-
-val=(tonumber(str) / display_values["cpu_count"]) * 100.0
-display_values["load_percent"]=AutoColorValue(val, usage_color_map) .. string.format("%02.1f", val) .. "~0"
-
-display_values["load5min"]=toks:next()
-display_values["load15min"]=toks:next()
-
-end
-
-
+-- this function checks which values have been asked for in a display string, and adds the functions needed to look
+-- those items up into the 'lookups' table.
 function LookupsFromDisplay(display)
 local lookups={}
 local names
@@ -724,13 +805,9 @@ do
 end
 
 
-for i,str in ipairs( {"$%(bat", "$%(bats%)", "$%(batterys%)", "$%(bats_total%)"} )
-do
-	if string.find(display, str) ~= nil
-	then
-		table.insert(lookups, LookupBatteries)
-		break
-	end
+if string.find(display, "$%(bat") ~= nil
+then
+	table.insert(lookups, LookupBatteries)
 end
 
 
@@ -744,23 +821,27 @@ then
 	table.insert(lookups, LookupTemperatures)
 end
 
-for i,str in ipairs( {"$%(load%)", "$%(load5mins%)", "$%(load15mins%)", "$%(load_percent%)"} )
+
+for i,str in ipairs( {"$%(cpu_count%)", "$%(load"} )
 do
 if string.find(display, str) ~= nil
 then
-	table.insert(lookups, LookupCpus)
+	table.insert(lookups, CpuUsage)
+end
+end
+
+for i,str in ipairs( {"$%(load1min", "$%(load5mins%)", "$%(load15mins%)", "$%(load_percent%)"} )
+do
+if string.find(display, str) ~= nil
+then
 	table.insert(lookups, LookupLoad)
 	break
 end
 end
 
-for i,str in ipairs( {"$%(ip4address:", "$%(ip4netmask:", "$%(ip4broadcast:"} )
-do
-if string.find(display, str) ~= nil
+if string.find(display, "$%(ip4") ~= nil
 then
 	table.insert(lookups, LookupIPv4)
-	break
-end
 end
 
 
@@ -795,6 +876,110 @@ end
 return output
 end
 
+
+function DisplayHelp()
+print()
+print("barmaid.lua  version: " .. version)
+print()
+print("usage:  lua barmaid.lua [options] [format string]")
+print()
+print("options:")
+print("-t <type>          - type of output. Possible values are 'dzen', 'lemonbar', 'xterm' and 'term'")
+print("-x <pos>           - x-position of window, in pixels or 'left', 'right', 'center'")
+print("-y <pos>           - y-position of window, in pixels or 'top', 'bottom'")
+print("-w <width>         - width of window in pixels")
+print("-h <height>        - height of window in pixels")
+print("-fn <font name>    - font to use")
+print("-font <font name>  - font to use")
+print("-bg <color>        - background color")
+print("-fg <color>        - default font/foreground color")
+print("-help-colors       - list color switches recognized in format string")
+print("-help-values       - list values recognized in format string")
+print("-?                 - this help")
+print("-help              - this help")
+print("--help             - this help")
+
+os.exit(0)
+end
+
+function DisplayHelpColors()
+
+print()
+print("Colors within the format string can be set using libUseful `~` notation, where the next character is the color prefix. These are then translated for the target output type. Available colors are:")
+print()
+print("~w  white")
+print("~n  black")
+print("~b  blue")
+print("~c  cyan")
+print("~g  green")
+print("~y  yellow")
+print("~m  magenta")
+print("~r  red")
+print("~0  reset to default color")
+print()
+print("The uppercase version of these sets the background instead of the foreground color.")
+print()
+print("Example:  ~r this text in red ~0 ~w~BThis text white on a blue background~0")
+print()
+print("Some values, particularly percentages, automatically color themselves") 
+
+os.exit(0)
+end
+
+
+function DisplayHelpValues()
+print()
+print("Values can be entered into the format string like this: ")
+print("  temp:  $(cpu_temp)")
+print()
+print("The format string should be enclosed in single quotes (') or else the shell will clobber these values.")
+print()
+print("Available values are:")
+print()
+print("time           display time as %H:%M:%S")
+print("date           display date as %Y/%m/%d")
+print("day_name       display 3-letter day name (Sun, Mon, Tues...)")
+print("month_name     display 3-letter month name")
+print("hour")
+print("minutes")
+print("seconds")
+print("year")
+print("month")
+print("day")
+print("hostname       system hostname")
+print("arch           system architecture")
+print("os             system os type")
+print("kernel         kernel version number")
+print("uptime         system uptime in $H:%M:%S")
+print("cpu_count      number of cpus")
+print("cpu_temp       cpu temperature in celsius. Currently only works on systems that have x86_pkg_temp or coretemp type sensors. For multicore systems displays the highest across all CPUs.")
+print("mem            percent memory usage")
+print("usedmem        used memory in metric format")
+print("freemem        free memory in metric format")
+print("totalmem       total memory in metric format")
+print("swap           percent swap space usage")
+print("usedswap       used swap in metric format")
+print("freeswap       free swap in metric format")
+print("totalswap      total swap in metric format")
+print("bat:           percentage remaining battery. This requires a battery number suffix, so `$(bat:0)` for the first battery")
+print("charging:      returns the character '~' (to look like an 'AC' symbol) if battery is charging. Requires a battery number suffix")
+print("bats           info for all batteries. If no batteries present, this will be blank.")
+print("fs:            filesystem use percent. Requires a filesystem mount suffix, so `$(fs:/home)` for filesystem on /home")
+print("ip4address:    ip4address. Requires a network interface suffix, e.g. `$(ip4address:eth0)`")
+print("ip4netmask:    ip4address. Requires a network interface suffix, e.g. `$(ip4address:eth0)`")
+print("ip4broadcast:  ip4address. Requires a network interface suffix, e.g. `$(ip4address:eth0)`")
+print("load_percent   system percentage load (instantaneous cpu usage)")
+print("load           system load (instantaneous cpu usage) in 'top' format")
+print("load1min       1min  load in 'top' format")
+print("load5min       5min  load in 'top' format")
+print("load15min      15min load in 'top' format")
+print("")
+print("the ip4 values have a special case where the interface suffix is specified as 'default'. In this case the system will go with the first interface it finds that has an ip and isn't the local 'lo' interface")
+print("")
+print("the default format string is:")
+print(settings.display)
+os.exit(0)
+end
 
 
 function ParseCommandLine(args)
@@ -840,6 +1025,15 @@ do
 		settings.foreground=args[i+1]
 		args[i+1]=""
 		if string.sub(settings.foreground, 1, 1) ~= "#" and TranslateColorName(settings.foreground)=="" then settings.foreground="#"..settings.foreground end
+	elseif str=="-help-colors" or str=="-help-colours"
+	then
+		DisplayHelpColors()
+	elseif str=="-help-values" or str=="-help-values"
+	then
+		DisplayHelpValues()
+	elseif str=="-?" or str=="-help" or str=="--help"
+	then
+		DisplayHelp()
 	elseif strutil.strlen(args[i]) > 0
 	then
 		settings.display=args[i]
