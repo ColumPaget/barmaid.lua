@@ -10,10 +10,10 @@ SHELL_OKAY=0
 SHELL_CLOSED=1
 SHELL_CLS=2
 
-version="2.0"
-isc_status=""
-counter=0
+version="3.0"
+lookup_counter=0
 display_values={}
+lookup_modules={}
 poll_streams=stream.POLL_IO()
 shell=nil
 stdio=nil
@@ -121,24 +121,6 @@ end
 return math.floor(pos)
 end
 
-
-function InternetStormStatus()
-local S, str
-
-if counter % 60 == 0
-then
-S=stream.STREAM("https://isc.sans.edu/infocon.txt", "r")
-if S ~= nil
-then
-	str=S:readln()
-	S:close()
-end
-
-isc_status=TranslateColorName(str)..str.."~0"
-end
-
-return isc_status
-end
 
 
 
@@ -844,6 +826,10 @@ then
 	table.insert(lookups, LookupIPv4)
 end
 
+for i,mod in ipairs(lookup_modules)
+do
+	mod.init(lookups, display)
+end
 
 return lookups
 end
@@ -987,6 +973,7 @@ settings={}
 
 settings.display="~w$(day_name)~0 $(day) $(month_name) ~y$(time)~0 $(bats) fs:$(fs:/)%  mem:$(mem)% load:$(load_percent)% cputemp:$(cpu_temp)c ~y$(ip4address:default)~0"
  
+settings.modules_dir="/usr/local/lib/barmaid/"
 settings.win_width=800
 settings.win_height=40
 settings.font=""
@@ -1081,8 +1068,23 @@ local retval=SHELL_OKAY
 end
 
 
+function LoadModules()
+local str, glob
+
+	glob=filesys.GLOB(settings.modules_dir.."/*.lua")
+	str=glob:next()
+	while str ~= nil
+	do
+		dofile(str)
+		str=glob:next()
+	end
+end
+
+
 
 settings=ParseCommandLine(arg)
+LoadModules()
+
 settings.lookups=LookupsFromDisplay(settings.display)
 Out=OpenOutput(settings)
 
@@ -1109,12 +1111,10 @@ do
 	
 	if update_display == true
 	then
-		counter=counter+1
 		last_time=now
 	
 		start_ticks=time.millisecs()
 		str=SubstituteDisplayValues(settings)
-	--	str=str.."ISC:"..InternetStormStatus()
 	
 		str=TranslateColorStrings(settings, str)
 		end_ticks=time.millisecs()
@@ -1122,6 +1122,7 @@ do
 		update_display=false
 		Out:writeln(str)
 		Out:flush()
+		lookup_counter=lookup_counter+1
 	end
 	
 	
