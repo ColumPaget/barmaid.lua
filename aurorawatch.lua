@@ -12,6 +12,8 @@ then
 	S:close()
 end
 
+if strutil.strlen(doc) > 0
+then
 toks=strutil.TOKENIZER(doc, "<|>|/|=| ", "mq")
 tok=toks:next()
 while tok ~= nil
@@ -22,6 +24,7 @@ end
 
 str=strutil.stripQuotes(str)
 display_values["aurorawatch"]=TranslateColorName(str)..str.."~0"
+end
 end
 
 end
