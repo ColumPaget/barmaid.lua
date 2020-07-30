@@ -10,7 +10,7 @@ if S ~= nil
 then
 	str=S:readln()
 	S:close()
-	if strutil.strlen(str) > 0 then display_values["isc"]=TranslateColorName(str)..str.."~0" end
+	if strutil.strlen(str) > 0 then display_values["isc"]=str end
 end
 
 end

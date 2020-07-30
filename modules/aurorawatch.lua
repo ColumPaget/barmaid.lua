@@ -23,7 +23,7 @@ do
 end
 
 str=strutil.stripQuotes(str)
-display_values["aurorawatch"]=TranslateColorName(str)..str.."~0"
+display_values["aurorawatch"]=str
 end
 end
 

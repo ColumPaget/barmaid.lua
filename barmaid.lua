@@ -14,6 +14,7 @@ version="3.0"
 lookup_counter=0
 display_values={}
 lookup_modules={}
+display_modules={}
 poll_streams=stream.POLL_IO()
 shell=nil
 stdio=nil
@@ -46,6 +47,26 @@ end
 
 return color
 end
+
+
+function AddDisplayValue(name, value, fmtstr, colormap)
+local valstr
+
+	if fmtstr ~= nil 
+	then 
+	valstr=string.format(fmtstr, value) 
+	else
+	valstr=value
+	end
+
+	display_values[name]=valstr
+	if colormap ~= nil
+	then
+		display_values[name..":color"]=AutoColorValue(value, colormap)..valstr.."~0"
+	end
+
+end
+
 
 
 
@@ -88,6 +109,7 @@ return wid,high
 end
 
 
+
 function SysReadFile(path)
 local S, str
 
@@ -103,6 +125,7 @@ end
 
 return(str)
 end
+
 
 
 function TranslateXPos(settings)
@@ -153,6 +176,7 @@ do
 		elseif char=="W" then outstr=outstr.."^bg(white)"
 		elseif char=="~" then outstr=outstr.."~"
 		elseif char=="0" then outstr=outstr.."^fg()^bg()"
+		else outstr=outstr.."~"..char
 		end
 	else outstr=outstr..char
 	end
@@ -195,6 +219,7 @@ do
 		elseif char=="W" then outstr=outstr.."%{B#ffffff}"
 		elseif char=="~" then outstr=outstr.."~"
 		elseif char=="0" then outstr=outstr.."%{F-}%{B-}"
+		else outstr=outstr..char
 		end
 	elseif char=="%" then outstr=outstr.."%%"
 	else outstr=outstr..char
@@ -205,6 +230,7 @@ end
 
 return(outstr)
 end
+
 
 
 function XtermTitleTranslateOutput(str)
@@ -411,8 +437,9 @@ end
 
 
 function LookupBatteries()
-local bats, i, bat, perc, color
-local str=""
+local bats, i, bat, perc
+local bats_str=""
+local bats_str_color=""
 local color_map={
 				{value=0, color="~R"},
 				{value=10, color="~r"},
@@ -425,16 +452,25 @@ bats=GetBatteries()
 
 for i,bat in ipairs(bats)
 do
-	perc=bat.charge * 100 / bat.max
-
-	color=AutoColorValue(perc, color_map)
-	str=str..string.format("%s%d~0", color, math.floor(perc + 0.5))
-	display_values["bat:"..i]=str
+	name="bat:"..i
+	perc=math.floor((bat.charge * 100 / bat.max) + 0.5)
+	AddDisplayValue(name, perc, "%d", color_map)
 	if bat.status == "Charging" then display_values["charging:"..i]="~~" end
 
-	display_values["bats"]=display_values["bats"].." bat"..i..":"..str.."%"
-	if bat.status == "Charging" then display_values["bats"]=display_values["bats"] .. "~~" end
+	bats_str=bats_str .. name..":"..display_values[name].."%"
+	bats_str_color=bats_str_color .. name..":"..display_values[name..":color"].."%"
+	if bat.status == "Charging" 
+	then
+		bats_str=bats_str.."~"
+		bats_str_color=bats_str_color.."~"
+	else
+		bats_str=bats_str.." "
+		bats_str_color=bats_str_color.." "
+	end
 end
+
+display_values["bats"]=bats_str
+display_values["bats:color"]=bats_str_color
 
 end
 
@@ -451,7 +487,7 @@ do
 	then
 		str=SysReadFile(path.."/temp")
 		val=tonumber(str) / 1000.0
-		display_values["cpu_temp"]=AutoColorValue(val, thermal_color_map)..val.."~0"
+		AddDisplayValue("cpu_temp", val, "% 3.1f", thermal_color_map)
 	end
 	path=Glob:next()
 end
@@ -478,7 +514,7 @@ end
 
 
 function LookupHWmon()
-local Glob, str, path, val
+local Glob, str, path
 
 Glob=filesys.GLOB("/sys/class/hwmon/*")
 path=Glob:next()
@@ -489,8 +525,7 @@ do
 	str=SysReadFile(path.."/name")
 	if str == "coretemp"
 	then
-		val=LookupCoreTemp(path)
-		display_values["cpu_temp"]=AutoColorValue(val, thermal_color_map)..val.."~0"
+		AddDisplayValue("cpu_temp", LookupCoreTemp(path), nil, thermal_color_map)
 	end
 	end
 
@@ -527,10 +562,8 @@ then
 		if fs_type ~= "none" and fs_type ~="cgroups"
 		then
 			perc=math.floor( (filesys.fs_used(fs_mount) * 100 / filesys.fs_size(fs_mount)) + 0.5)
-			color=AutoColorValue(perc, usage_color_map)
+			AddDisplayValue("fs:"..fs_mount, perc, nil, usage_color_map)
 		end
-
-		display_values["fs:"..fs_mount]=string.format("%s%1.1f~0", color, perc)
 
 	str=S:readln()
 	end
@@ -576,7 +609,7 @@ display_values["freemem"]=strutil.toMetric(availmem)
 display_values["totalmem"]=strutil.toMetric(totalmem)
 
 mem_perc=100.0 - (availmem * 100 / totalmem)
-display_values["mem"]=AutoColorValue(mem_perc, usage_color_map) ..  string.format("%02.1f", mem_perc) .."~0"
+AddDisplayValue("mem", mem_perc, "% 3.1f", usage_color_map)
 
 
 --do all the same for swap
@@ -593,8 +626,7 @@ else
 	mem_perc=0
 end
 
-display_values["swap"]=AutoColorValue(mem_perc, usage_color_map) ..  string.format("%02.1f", mem_perc) .."~0"
-
+AddDisplayValue("swap", mem_perc, "% 3.1f", usage_color_map)
 
 end
 
@@ -682,8 +714,8 @@ then
 	if display_values["cpu_last_used"] ~= nil
 	then
 	val=(used - tonumber(display_values["cpu_last_used"])) / (total - display_values["cpu_last_total"])
-	display_values["load"]=string.format("%02.1f", val * cpu_count)
-	display_values["load_percent"]=AutoColorValue(val, usage_color_map) .. string.format("%02.1f", val * 100.0) .. "~0"
+	AddDisplayValue("load", val * cpu_count, nil, nil)
+	AddDisplayValue("load_percent", val * 100.0, "% 3.1f", usage_color_map)
 	else
 	display_values["load"]="---"
 	display_values["load_percent"]="---"
@@ -793,12 +825,12 @@ then
 end
 
 
-if string.find(display, "$%(fs:") ~= nil
+if string.find(display, "$%(fs:") ~= nil 
 then
 	table.insert(lookups, LookupPartitions)
 end
 
-if string.find(display, "$%(cpu_temp%)") ~= nil
+if string.find(display, "$%(cpu_temp") ~= nil 
 then
 	table.insert(lookups, LookupTemperatures)
 end
@@ -812,7 +844,7 @@ then
 end
 end
 
-for i,str in ipairs( {"$%(load1min", "$%(load5mins%)", "$%(load15mins%)", "$%(load_percent%)"} )
+for i,str in ipairs( {"$%(load"} )
 do
 if string.find(display, str) ~= nil
 then
@@ -835,6 +867,18 @@ return lookups
 end
 
 
+function ProcessDisplayModules(value_name, value)
+local i, item, str
+
+str=value
+for i,item in ipairs(display_modules)
+do
+	if item.process ~= nil then str=item.process(value_name, str) end
+end
+return str
+end
+
+
 function SubstituteDisplayValues(settings)
 local toks, str
 local output=""
@@ -851,7 +895,10 @@ do
 	if str=="$("
 	then
 		str=toks:next()
-		if display_values[str] ~= nil then output=output..display_values[str] end
+		if display_values[str] ~= nil 
+		then 
+			output=output .. ProcessDisplayModules(str, display_values[str])
+		end
 	elseif strutil.strlen(str) and str ~= ")"
 	then
 		output=output..str
@@ -971,7 +1018,7 @@ end
 function ParseCommandLine(args)
 settings={}
 
-settings.display="~w$(day_name)~0 $(day) $(month_name) ~y$(time)~0 $(bats) fs:$(fs:/)%  mem:$(mem)% load:$(load_percent)% cputemp:$(cpu_temp)c ~y$(ip4address:default)~0"
+settings.display="~w$(day_name)~0 $(day) $(month_name) ~y$(time)~0 $(bats_color) fs:$(fs_color:/)%  mem:$(mem_color)% load:$(load_percent_color)% cputemp:$(cpu_temp_color)c ~y$(ip4address:default)~0"
  
 settings.modules_dir="/usr/local/lib/barmaid/"
 settings.win_width=800
@@ -1080,7 +1127,8 @@ local str, glob
 	end
 end
 
-
+-- assume our output device, whatever it is, can support unicode UTF8
+terminal.utf8(3)
 
 settings=ParseCommandLine(arg)
 LoadModules()
@@ -1117,6 +1165,7 @@ do
 		str=SubstituteDisplayValues(settings)
 	
 		str=TranslateColorStrings(settings, str)
+		str=terminal.format(str)
 		end_ticks=time.millisecs()
 	
 		update_display=false
@@ -1167,7 +1216,13 @@ do
 	end
 
 	-- if any child processes have exited, then collect them here
-	process.childExited()
+	if process.collect ~= nil
+	then
+		process.collect()
+	else
+		-- old function call, will go away eventually
+		process.childExited(-1)
+	end
 end
 
 
