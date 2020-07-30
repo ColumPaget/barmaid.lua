@@ -10,7 +10,7 @@ SHELL_OKAY=0
 SHELL_CLOSED=1
 SHELL_CLS=2
 
-version="3.0"
+version="3.1"
 lookup_counter=0
 display_values={}
 lookup_modules={}
