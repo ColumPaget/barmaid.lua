@@ -15,7 +15,7 @@ USAGE
 ======
 
 ```
-lua barmaid.lua [-t output_type] [-type output_type] [-x xpos] [-y ypos] [-w width] [-h height] [-bg color] [-fg color] [-fn font] [-font font] [format string]
+lua barmaid.lua [-t output_type] [-type output_type] [-x xpos] [-y ypos] [-w width] [-h height] [-bg color] [-fg color] [-fn font] [-font font] [-kvfile path] [-sock path] [format string]
 ```
 
 online help can be called up with 'lua barmaid.lua -help' 
@@ -27,6 +27,23 @@ The `-x`, `-y`, `-w` and `-h` options set the x and y position of the bar, and i
 The `-bg` and `-fg` options set the foreground and background colors of the bar, which (accept for terminal mode) is expressed in rrggbb hexadecimal format with or without a leading '#' (if using a '#' you'll have to put the color string in single-quotes or the shell will treat it as a comment). In terminal mode colors are expressed by name, such as 'blue', 'red' etc. Colors are sadly not available in xterm mode.
 
 `-fn` or `-font` set the font to use, this can differ a bit in format with dzen2 accepting short fontconfig names (use `fc-list` to list these), whereas lemonbar uses old-style X11 font names (use `xlsfonts` to see a list of these for your system). Again, this feature is not available for xterm titles.
+
+The `-kvfile` option specifies the path to a file that contains key-value pairs in the form:
+
+```
+name1=value1
+name2=value2
+```
+
+This allows setting arbitary values to be displayed. So one could set the value 'days2christmas' by adding the line:
+
+```
+days2christmas=13
+```
+
+and this can then be displayed by adding the `Â$(days2christmas)` variable to the format/display string.
+
+The `-sock` option specifies a path to a unix socket that other programs can connect to and send name-value pairs that can then be used in the format string.
 
 Finally the `format string` is the string to display. Values within `$()` will be substituted by the program with the appropriate data, like this:
 

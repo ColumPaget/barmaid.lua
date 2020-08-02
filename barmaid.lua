@@ -5,12 +5,13 @@ require("filesys")
 require("process")
 require("terminal")
 require("sys")
+require("net")
 
 SHELL_OKAY=0
 SHELL_CLOSED=1
 SHELL_CLS=2
 
-version="3.1"
+version="3.2"
 lookup_counter=0
 display_values={}
 lookup_modules={}
@@ -879,9 +880,74 @@ return str
 end
 
 
+function KvLineRead(S)
+local str, toks
+
+str=S:readln()
+if str ~= nil
+then
+	str=strutil.trim(str)
+	toks=strutil.TOKENIZER(str, "=")
+	display_values[toks:next()]=toks:remaining()
+	return true
+else
+	return false
+end
+
+end
+
+
+function KvFileRead(feed)
+local S
+
+S=stream.STREAM(feed.path)
+if S ~= nil
+then
+	while KvLineRead(S)
+	do
+		--nothing
+	end
+	S:close()
+end
+end
+
+
+function KvFileAdd(path)
+local S 
+local feed={}
+
+feed.type="kvfile"
+feed.path=path
+feed.read=KvFileRead
+table.insert(settings.datafeeds, feed)
+
+end
+
+
+
+
+function DataSockAdd(path)
+local Serv
+
+Serv=net.SERVER("unix:"..path)
+if Serv ~= nil 
+then 
+	settings.datasock=Serv
+	poll_streams:add(Serv:get_stream())
+end
+
+end
+
+
+
 function SubstituteDisplayValues(settings)
-local toks, str
+local toks, str, func, feed
 local output=""
+
+for i,feed in ipairs(settings.datafeeds)
+do
+	if feed.type=="kvfile" then KvFileRead(feed) end
+end
 
 for i,func in ipairs(settings.lookups)
 do
@@ -926,6 +992,8 @@ print("-fn <font name>    - font to use")
 print("-font <font name>  - font to use")
 print("-bg <color>        - background color")
 print("-fg <color>        - default font/foreground color")
+print("-kvfile <path>     - path to a file that contains name-value pairs")
+print("-sock <path>       - path to a unix stream socket that receives name-value pairs")
 print("-help-colors       - list color switches recognized in format string")
 print("-help-values       - list values recognized in format string")
 print("-?                 - this help")
@@ -1018,7 +1086,7 @@ end
 function ParseCommandLine(args)
 settings={}
 
-settings.display="~w$(day_name)~0 $(day) $(month_name) ~y$(time)~0 $(bats_color) fs:$(fs_color:/)%  mem:$(mem_color)% load:$(load_percent_color)% cputemp:$(cpu_temp_color)c ~y$(ip4address:default)~0"
+settings.display="~w$(day_name)~0 $(day) $(month_name) ~y$(time)~0 $(bats:color) fs:$(fs:/:color)%  mem:$(mem:color)% load:$(load_percent:color)% cputemp:$(cpu_temp:color)c ~y$(ip4address:default)~0"
  
 settings.modules_dir="/usr/local/lib/barmaid/"
 settings.win_width=800
@@ -1030,6 +1098,8 @@ settings.background=""
 settings.xpos="center"
 settings.ypos=""
 settings.steal_lines=0
+settings.datafeeds={}
+
 
 for i,str in ipairs(args)
 do
@@ -1058,8 +1128,15 @@ do
 		if string.sub(settings.background, 1, 1) ~= "#" and TranslateColorName(settings.background)=="" then settings.background="#"..settings.background end
 	elseif str=="-fg" or str=="-foreground" then
 		settings.foreground=args[i+1]
-		args[i+1]=""
 		if string.sub(settings.foreground, 1, 1) ~= "#" and TranslateColorName(settings.foreground)=="" then settings.foreground="#"..settings.foreground end
+	elseif str=="-kvfile"
+	then
+		KvFileAdd(args[i+1])	
+		args[i+1]=""
+	elseif str=="-sock"
+	then
+		DataSockAdd(args[i+1])	
+		args[i+1]=""
 	elseif str=="-help-colors" or str=="-help-colours"
 	then
 		DisplayHelpColors()
@@ -1127,6 +1204,11 @@ local str, glob
 	end
 end
 
+
+
+
+
+-- MAIN STARTS HERE
 -- assume our output device, whatever it is, can support unicode UTF8
 terminal.utf8(3)
 
@@ -1189,12 +1271,18 @@ do
 		then
 		if S==stdio 
 		then 
-				shell:write(stdio:getch(), 1) 
+			shell:write(stdio:getch(), 1) 
 		elseif S==shell
 		then
 			shell_result=ReadFromPty()
 			if shell_result==SHELL_CLOSED then break end
 			if shell_result==SHELL_CLS then update_display=true end
+		elseif S==settings.datasock
+		then
+			S=settings.datasock:accept()
+			poll_streams:add(S)
+		else
+			KvLineRead(S)
 		end
 	end
 
