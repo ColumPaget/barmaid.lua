@@ -43,7 +43,9 @@ days2christmas=13
 
 and this can then be displayed by adding the `Â$(days2christmas)` variable to the format/display string.
 
-The `-sock` option specifies a path to a unix socket that other programs can connect to and send name-value pairs that can then be used in the format string.
+The `-sock` option specifies a path to a unix socket that other programs can connect to and send name-value pairs that can then be used in the format string, using the same message format format as for -kvfile.
+
+Both `-kvfile` and `-sock` support specail name-value pairs whose name begins with '@'. These are treated as counters, so that instead of storing the sent value, the counter increments. If a blank string is sent as the value, the counter will reset to zero. 
 
 Finally the `format string` is the string to display. Values within `$()` will be substituted by the program with the appropriate data, like this:
 
@@ -83,7 +85,9 @@ Will display the words 'disk:' and 'mem:' in blue, in front of the values for ro
 
 Will display the time (hours and minutes) in white on a red background, and the date with the default colors.
 
-Unicode glyphs can be included with the '~:# notation. Please see the 'UNICODE' section below for more details.
+Unicode glyphs can be included with the `~:#` notation. Please see the 'UNICODE' section below for more details.
+
+Dzen2 supports images, and these can be set with the notation `~i{/usr/share/icons/world.jpg}`. Dzen2 only supports .xpm images, so barmaid.lua will use the ImageMagick 'convert' utility to convert .png or .jpg 
 
 Some values have alternative versions that are suffixed with ':color'. These values are automatically colored according to their numeric values. Values can also be modified for display using the 'reformat module' method discussed in the 'MODULES' section below.
 
@@ -160,6 +164,7 @@ Barmaid supports unicode UTF8 output. Unicode symbols can be included by either:
 
 1) Unicode code-point value. so, for example "~U266B" displays a musical note symbol.
 2) Unicode glyph name. This requires a version of libUseful more recent than 4.38 and an '/etc/unicode-names.conf' file. This allows specifying unicode symbols via the notation: "~:music:"
+
 
 
 MODULES

@@ -11,7 +11,7 @@ SHELL_OKAY=0
 SHELL_CLOSED=1
 SHELL_CLS=2
 
-version="3.2"
+version="4.0"
 lookup_counter=0
 display_values={}
 lookup_modules={}
@@ -72,6 +72,7 @@ end
 
 
 function TranslateColorName(name)
+
 if name=="black" then return("~n") end
 if name=="white" then return("~w") end
 if name=="cyan" then return("~c") end
@@ -83,6 +84,21 @@ if name=="orange" then return("~r") end
 if name=="red" then return("~r") end
 
 return("")
+end
+
+
+function GetDisplayVars(str)
+local vars={}
+
+toks=strutil.TOKENIZER(settings.display, "$(|)", "ms")
+str=toks:next()
+while str ~= nil
+do
+	if str=="$(" then table.insert(vars, toks:next()) end
+	str=toks:next()
+end
+
+return vars
 end
 
 
@@ -146,12 +162,45 @@ return math.floor(pos)
 end
 
 
+--checks if a .xpm version of an image has been cached in ~/.local/share/cache/icons
+--and uses ImageMagick 'convert' utility to create one if not
+function ConvertImageToXPM(path)
+local extn, str
+
+extn=filesys.extn(path)
+if extn==".xpm" then return path end 
+
+str=string.gsub(filesys.basename(path), extn, ".xpm")
+cache_path=process.getenv("HOME") .. "/.local/share/cache/icons/" .. str
+if filesys.exists(cache_path) then return cache_path end
+
+filesys.mkdirPath(cache_path)
+os.execute("convert "..path.." "..cache_path)
+
+print("convert: "..path.." "..cache_path)
+return cache_path
+end
+
+
+-- clips out an image path from a '~i{path}' display string entry
+function TranslateClipImagePath(str, i)
+local val, item
+
+i=i+2
+val=string.find(string.sub(str, i), "}")
+item=string.sub(str, i, i+val-2)
+item=ConvertImageToXPM(item)
+i=i+val-1
+
+return i,item
+end
 
 
 function DZenTranslateColorStrings(str)
 local outstr=""
 local i=1
-local len, char
+local len, char, val
+local onclick_counter=1, item
 
 len=strutil.strlen(str)
 while i <= len
@@ -176,6 +225,22 @@ do
 		elseif char=="C" then outstr=outstr.."^bg(cyan)"
 		elseif char=="W" then outstr=outstr.."^bg(white)"
 		elseif char=="~" then outstr=outstr.."~"
+		elseif char=="i"
+		then
+			i,item=TranslateClipImagePath(str, i)
+			item=ConvertImageToXPM(item)
+			outstr=outstr.."^i("..item..")"
+		elseif char=="{"
+		then
+			item=settings.onclicks[onclick_counter]
+			if item ~= nil
+			then
+			outstr=outstr.."^ca(1," .. item .. ")"
+			onclick_counter=onclick_counter+1
+			end
+		elseif char=="}"
+		then 
+			outstr=outstr.."^ca()" 
 		elseif char=="0" then outstr=outstr.."^fg()^bg()"
 		else outstr=outstr.."~"..char
 		end
@@ -194,6 +259,7 @@ function LemonbarTranslateColorStrings(str)
 local outstr=""
 local i=1
 local len, char
+local onclick_counter=1, item
 
 outstr="%{c}"
 len=strutil.strlen(str)
@@ -220,6 +286,21 @@ do
 		elseif char=="W" then outstr=outstr.."%{B#ffffff}"
 		elseif char=="~" then outstr=outstr.."~"
 		elseif char=="0" then outstr=outstr.."%{F-}%{B-}"
+		elseif char=="i"
+		then
+			i,item=TranslateClipImagePath(str, i)
+		--	io.stderr:write("images not supported in lemonbar. ignoring ".. item .."\n")
+		elseif char=="{"
+		then
+			item=settings.onclicks[onclick_counter]
+			if item ~= nil
+			then
+			outstr=outstr.."%{A:" .. string.format("click=%d", onclick_counter) .. ":}"
+			onclick_counter=onclick_counter+1
+			end
+		elseif char=="}"
+		then 
+			outstr=outstr.."%{A}" 
 		else outstr=outstr..char
 		end
 	elseif char=="%" then outstr=outstr.."%%"
@@ -249,6 +330,7 @@ do
 		i=i+1
 		char=string.sub(str, i, i)		
 		if char=="~" then outstr=outstr.."~" end
+
 	else outstr=outstr..char
 	end
 
@@ -366,6 +448,7 @@ then
 	if strutil.strlen(settings.foreground) > 0 then str=str .. " -fg '" .. settings.foreground .. "'" end
 	if strutil.strlen(settings.background) > 0 then str=str .. " -bg '" .. settings.background .. "'" end
 	S=stream.STREAM(str)
+	poll_streams:add(S)
 elseif settings.output=="lemonbar"
 then
 	str="cmd:lemonbar -g " .. settings.win_width .. "x"..settings.win_height.."+"..xpos.."+0"
@@ -373,9 +456,10 @@ then
 	if strutil.strlen(settings.foreground) > 0 then str=str .. " -F '" .. settings.foreground .. "'" end
 	if strutil.strlen(settings.background) > 0 then str=str .. " -B '" .. settings.background .. "'" end
 	S=stream.STREAM(str)
+	poll_streams:add(S)
 elseif settings.output=="xterm" -- put bar in xterm title by wrapping terminal
 then
-		S=WrapTerminal(settings.steal_lines)
+	S=WrapTerminal(settings.steal_lines)
 else 
 	if settings.ypos=="bottom" --put bar at bottom of screen, wrap terminal
 	then
@@ -828,61 +912,67 @@ end
 
 
 
--- this function checks which values have been asked for in a display string, and adds the functions needed to look
--- those items up into the 'lookups' table.
-function LookupsFromDisplay(display)
-local lookups={}
-local names
+function InitializeLookup(lookups, var)
+local check_names={}
 
-table.insert(lookups, LookupHostInfo)
+-- set any counter vars to zero initially
+if string.sub(var, 1, 1)=="@" then display_values[var]=0 end
 
-for i,str in ipairs( {"$%(time%)", "$%(date%)", "$%(day_name%)", "$%(day%)", "$%(month%)", "$%(month_name%)", "$%(year%)", "$%(hours%)", "$%(minutes%)", "$%(mins%)", "$%(seconds%)", "$%(secs%)"} )
-do
-	if string.find(display, str) ~= nil
-	then
+check_names={["time"]=1, ["date"]=1, ["day_name"]=1, ["day"]=1, ["month"]=1, ["month_name"]=1, ["year"]=1, ["hours"]=1, ["minutes"]=1, ["mins"]=1, ["seconds"]=1, ["secs"]=1}
+
+
+if check_names[var] ~= nil
+then
 		table.insert(lookups, LookupTimes)
-		break
-	end
 end
 
-
-if string.find(display, "$%(bat") ~= nil
+if string.sub(var, 1, 4) == "bat:"
 then
 	table.insert(lookups, LookupBatteries)
 end
 
 
-if string.find(display, "$%(fs:") ~= nil 
+if string.sub(var, 1,3) == "fs:"
 then
 	table.insert(lookups, LookupPartitions)
 end
 
-if string.find(display, "$%(cpu_temp") ~= nil 
+if string.sub(var, 1, 8) == "cpu_temp"
 then
 	table.insert(lookups, LookupTemperatures)
 end
 
-
-for i,str in ipairs( {"$%(cpu_count%)", "$%(load"} )
-do
-if string.find(display, str) ~= nil
+if var == "cpu_count" or string.sub(var, 1, 4) == "load"
 then
 	table.insert(lookups, CpuUsage)
 end
-end
 
-for i,str in ipairs( {"$%(load"} )
-do
-if string.find(display, str) ~= nil
+if string.sub(var, 1, 4) == "load"
 then
 	table.insert(lookups, LookupLoad)
-	break
+end
+
+if string.sub(var, 1, 3) == "ip4"
+then
+	table.insert(lookups, LookupIPv4)
 end
 end
 
-if string.find(display, "$%(ip4") ~= nil
-then
-	table.insert(lookups, LookupIPv4)
+
+-- this function checks which values have been asked for in a display string, and adds the functions needed to look
+-- those items up into the 'lookups' table.
+function LookupsFromDisplay(display)
+local lookups={}
+local var_names
+
+-- always lookup basic host details
+table.insert(lookups, LookupHostInfo)
+
+var_names=GetDisplayVars(display)
+
+for i, var in ipairs(var_names)
+do
+InitializeLookup(lookups, var)
 end
 
 for i,mod in ipairs(lookup_modules)
@@ -907,14 +997,31 @@ end
 
 
 function KvLineRead(S)
-local str, toks
+local str, toks, name
 
 str=S:readln()
 if str ~= nil
 then
 	str=strutil.trim(str)
 	toks=strutil.TOKENIZER(str, "=")
-	display_values[toks:next()]=toks:remaining()
+	name=toks:next()
+	if string.sub(name, 1,1)=="@"
+	then
+
+		if strutil.strlen(toks:remaining())==0
+		then 
+			val=0
+		elseif display_values[name] ~= nil 
+		then 
+			val=tonumber(display_values[name]) +1
+		else val=1 
+		end
+
+		display_values[name]=val
+	else
+		display_values[toks:next()]=toks:remaining()
+	end
+
 	return true
 else
 	return false
@@ -1020,17 +1127,22 @@ print("-bg <color>        - background color")
 print("-fg <color>        - default font/foreground color")
 print("-kvfile <path>     - path to a file that contains name-value pairs")
 print("-sock <path>       - path to a unix stream socket that receives name-value pairs")
+print("-onclick <command> - register a command to be used in clickable areas (see -help-onclick)")
 print("-help-colors       - list color switches recognized in format string")
 print("-help-values       - list values recognized in format string")
+print("-help-onclick      - explain clickable area system")
+print("-help-images       - explain images display system")
+print("-help-sock         - explain datasocket system")
 print("-?                 - this help")
 print("-help              - this help")
 print("--help             - this help")
-
+print()
 os.exit(0)
 end
 
-function DisplayHelpColors()
 
+
+function DisplayHelpColors()
 print()
 print("Colors within the format string can be set using libUseful `~` notation, where the next character is the color prefix. These are then translated for the target output type. Available colors are:")
 print()
@@ -1048,7 +1160,12 @@ print("The uppercase version of these sets the background instead of the foregro
 print()
 print("Example:  ~r this text in red ~0 ~w~BThis text white on a blue background~0")
 print()
-print("Some values, particularly percentages, automatically color themselves") 
+print("~i is a special case that allows the displaying of images in dzen2. See '-help-images'")
+print("~{ and ~} are special cases that define clickable areas. See '-help-onclick'")
+
+print("Some special values are availabel that automatically color themselves. See '-help-values'.") 
+print()
+
 
 os.exit(0)
 end
@@ -1061,7 +1178,11 @@ print("  temp:  $(cpu_temp)")
 print()
 print("The format string should be enclosed in single quotes (') or else the shell will clobber these values.")
 print()
-print("Available values are:")
+print("User-defined values (including counters) are possible, and can be set using the 'datasock' system (see -help-sock)")
+print()
+print("In addition to plain values, barmaid.lua has a number of 'auto-color' values with ':color' appended to their name, which automatically color themselves depending on the values they have.")
+print()
+print("Available plain values are:")
 print()
 print("time           display time as %H:%M:%S")
 print("date           display date as %Y/%m/%d")
@@ -1101,12 +1222,80 @@ print("load1min       1min  load in 'top' format")
 print("load5min       5min  load in 'top' format")
 print("load15min      15min load in 'top' format")
 print("")
+print("Available auto-colored values are:")
+print()
+print("cpu_temp:color     cpu temperature in celsius. Currently only works on systems that have x86_pkg_temp or coretemp type sensors. For multicore systems displays the highest across all CPUs.")
+print("mem:color          percent memory usage")
+print("usedmem:color      used memory in metric format")
+print("freemem:color      free memory in metric format")
+print("totalmem:color     total memory in metric format")
+print("swap:color         percent swap space usage")
+print("usedswap:color     used swap in metric format")
+print("freeswap:color     free swap in metric format")
+print("totalswap:color    total swap in metric format")
+print("bat:<name>:color   percentage remaining battery. This requires a battery number suffix, so `$(bat:0)` for the first battery")
+print("bats:color         info for all batteries. If no batteries present, this will be blank.")
+print("fs:<path>:color    filesystem use percent. Requires a filesystem mount suffix, so `$(fs:/home)` for filesystem on /home")
+print("load_percent:color system percentage load (instantaneous cpu usage)")
+print("load:color         system load (instantaneous cpu usage) in 'top' format")
+print("load1min:color     1min  load in 'top' format")
+print("load5min:color     5min  load in 'top' format")
+print("load15min:color    15min load in 'top' format")
+print("")
+
 print("the ip4 values have a special case where the interface suffix is specified as 'default'. In this case the system will go with the first interface it finds that has an ip and isn't the local 'lo' interface")
 print("")
 print("the default format string is:")
 print(settings.display)
+print()
 os.exit(0)
 end
+
+
+function DisplayHelpDatasocket()
+print()
+print("barmaid.lua can receive messages on a unix socket, specified with the '-sock' option. Messages sent to this socket can then be used to set variables in barmaid in order for them to be displayed. For example:")
+print()
+print("   barmaid.lua 'message: $(announcement)' -sock /tmp/barmaid.sock")
+print()
+print("messages can then be sent to this socket in the form 'announcement=system is shutting down' and the variable 'announcement' will be set and displayed. Messages must be terminated with a 'newline' character.") 
+print()
+print("A special type of variable with names begining with the '@' symbol can be used as a counter. For example:")
+print()
+print("   barmaid.lua 'events: $(@events)' -sock /tmp/barmaid.sock")
+print()
+print("will display a counter that can be incremented by sending '@events=something' to the datasocket. Every time such a message is recieved, the counter will increment. The counter can be reset to zero by setting the variable to an empty string by sending '@events='");
+print()
+os.exit(0)
+end
+
+
+function DisplayHelpImages()
+
+print()
+print("barmaid.lua can use images with the dzen2 bar utility. An entry in the display string of the form:")
+print()
+print("   ~i{/usr/share/icons/warning.jpg}")
+print()
+print("will display the image '/usr/share/icons/warning.jpg' in the dzen2 bar. Dzen2 only supports .xpm images by default, so barmaid.lua will use the ImageMagick 'convert' program to convert .png or .jpg files before displaying them.");
+print()
+os.exit(0)
+end
+
+
+function DisplayHelpOnClick()
+
+print()
+print("Clickable areas are supported for dzen2 and lemonbar bars. These are defined using ~{ and ~} to mark the start and the end of a clickable area. These areas then match to -onclick options given on the barmad command line. The first '~{' in the display string matches the first -onclick option, and so on. For example:")
+print()
+print("   lua barmaid.lua '~{ 1st on click~}  ~{ 2nd on click ~}' -onclick xterm -onclick 'links -g www.google.com'")
+print()
+print("will create two clickable areas, the first of which will launch and xterm when clicked, and the second will launch the links webbrowser.");
+print()
+
+os.exit(0)
+end
+
 
 
 function ParseCommandLine(args)
@@ -1125,7 +1314,7 @@ settings.xpos="center"
 settings.ypos=""
 settings.steal_lines=0
 settings.datafeeds={}
-
+settings.onclicks={}
 
 for i,str in ipairs(args)
 do
@@ -1163,12 +1352,25 @@ do
 	then
 		DataSockAdd(args[i+1])	
 		args[i+1]=""
-	elseif str=="-help-colors" or str=="-help-colours"
+	elseif str=="-onclick"
+	then
+		table.insert(settings.onclicks, args[i+1])
+		args[i+1]=""
+	elseif str=="-help-colors" or str=="--help-colors" or str=="-help-colours"
 	then
 		DisplayHelpColors()
-	elseif str=="-help-values" or str=="-help-values"
+	elseif str=="-help-images" or str=="--help-images"
+	then
+		DisplayHelpImages()
+	elseif str=="-help-values" or str=="--help-values"
 	then
 		DisplayHelpValues()
+	elseif str=="-help-sock" or str=="--help-sock"
+	then
+		DisplayHelpDatasocket()
+	elseif str=="-help-onclick" or str=="--help-onclick"
+	then
+		DisplayHelpOnClick()
 	elseif str=="-?" or str=="-help" or str=="--help"
 	then
 		DisplayHelp()
@@ -1231,6 +1433,21 @@ local str, glob
 end
 
 
+function ProcessBarProgramOutput(str)
+
+if settings.output=="lemonbar"
+then
+
+if string.sub(str, 1, 6) == "click="
+then
+	val=tonumber(string.sub(str, 7))
+	item=settings.onclicks[val]
+	if item ~= nil then process.spawn(item) end
+end
+
+end
+
+end
 
 
 
@@ -1294,7 +1511,7 @@ do
 	
 	S=poll_streams:select(100)
 	if S ~= nil
-		then
+	then
 		if S==stdio 
 		then 
 			shell:write(stdio:getch(), 1) 
@@ -1303,10 +1520,17 @@ do
 			shell_result=ReadFromPty()
 			if shell_result==SHELL_CLOSED then break end
 			if shell_result==SHELL_CLS then update_display=true end
-		elseif S==settings.datasock
+		-- activity coming from lemonbar or dzen or other 'bar' program
+		elseif S==Out
+		then
+		ProcessBarProgramOutput(S:readln())
+		-- our listening datasocket has recieved a connection, accept a new client who will
+		-- send us messages
+		elseif S==settings.datasock:get_stream()
 		then
 			S=settings.datasock:accept()
 			poll_streams:add(S)
+		-- anything else must be coming from a client program that has connected to our datasock
 		else
 			KvLineRead(S)
 		end
