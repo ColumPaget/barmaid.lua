@@ -1531,8 +1531,10 @@ do
 			S=settings.datasock:accept()
 			poll_streams:add(S)
 		-- anything else must be coming from a client program that has connected to our datasock
-		else
-			KvLineRead(S)
+		elseif KvLineRead(S) == false
+		then
+			poll_streams:delete(S)
+			S:close()								
 		end
 	end
 
