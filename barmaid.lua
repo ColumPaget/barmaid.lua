@@ -13,6 +13,7 @@ SHELL_CLS=2
 
 version="4.0"
 lookup_counter=0
+lookup_values={}
 display_values={}
 lookup_modules={}
 display_modules={}
@@ -910,52 +911,86 @@ end
 end
 
 
+function LookupServicesUp()
+local i, url, toks, S
 
+if lookup_counter % 30 == 0
+then
+if lookup_values.ServicesUp ~= nil
+then
+	for i,url in ipairs(lookup_values.ServicesUp)
+	do
+		S=stream.STREAM(url, "r timeout=20")
+		if S ~= nil 
+		then
+		display_values["up:"..url]="up"
+		S:close()
+		else
+		display_values["up:"..url]="down"
+		end
+	end
+end
+end
 
-function InitializeLookup(lookups, var)
+end
+
+-- this function adds lookup functions to the 'lookups' table
+-- using the badly named 'name' variable which contains the name 
+-- of a lookup as it appeared in the main config string for the
+-- display bar
+function InitializeLookup(lookups, name)
 local check_names={}
 
--- set any counter vars to zero initially
-if string.sub(var, 1, 1)=="@" then display_values[var]=0 end
+-- set any counter vars to zero initially, so that when the lookup
+-- function is called it's counting from the right value!
+if string.sub(name, 1, 1)=="@" then display_values[name]=0 end
 
 check_names={["time"]=1, ["date"]=1, ["day_name"]=1, ["day"]=1, ["month"]=1, ["month_name"]=1, ["year"]=1, ["hours"]=1, ["minutes"]=1, ["mins"]=1, ["seconds"]=1, ["secs"]=1}
 
 
-if check_names[var] ~= nil
+if check_names[name] ~= nil
 then
 		table.insert(lookups, LookupTimes)
 end
 
-if string.sub(var, 1, 4) == "bat:"
+if string.sub(name, 1, 4) == "bat:"
 then
 	table.insert(lookups, LookupBatteries)
 end
 
 
-if string.sub(var, 1,3) == "fs:"
+if string.sub(name, 1,3) == "fs:"
 then
 	table.insert(lookups, LookupPartitions)
 end
 
-if string.sub(var, 1, 8) == "cpu_temp"
+if string.sub(name, 1, 8) == "cpu_temp"
 then
 	table.insert(lookups, LookupTemperatures)
 end
 
-if var == "cpu_count" or string.sub(var, 1, 4) == "load"
+if name == "cpu_count" or string.sub(name, 1, 4) == "load"
 then
 	table.insert(lookups, CpuUsage)
 end
 
-if string.sub(var, 1, 4) == "load"
+if string.sub(name, 1, 4) == "load"
 then
 	table.insert(lookups, LookupLoad)
 end
 
-if string.sub(var, 1, 3) == "ip4"
+if string.sub(name, 1, 3) == "ip4"
 then
 	table.insert(lookups, LookupIPv4)
 end
+
+if string.sub(name, 1, 3) == "up:"
+then
+	table.insert(lookups, LookupServicesUp)
+	if lookup_values.ServicesUp == nil then lookup_values.ServicesUp={} end
+	table.insert(lookup_values.ServicesUp, string.sub(name, 4))
+end
+
 end
 
 
