@@ -12,11 +12,13 @@ SHELL_CLOSED=1
 SHELL_CLS=2
 
 version="4.0"
+settings={}
 lookup_counter=0
 lookup_values={}
 display_values={}
 lookup_modules={}
 display_modules={}
+display_translations={}
 poll_streams=stream.POLL_IO()
 shell=nil
 stdio=nil
@@ -178,7 +180,6 @@ if filesys.exists(cache_path) then return cache_path end
 filesys.mkdirPath(cache_path)
 os.execute("convert "..path.." "..cache_path)
 
-print("convert: "..path.." "..cache_path)
 return cache_path
 end
 
@@ -826,7 +827,7 @@ then
 	if display_values["cpu_last_used"] ~= nil
 	then
 	val=(used - tonumber(display_values["cpu_last_used"])) / (total - display_values["cpu_last_total"])
-	AddDisplayValue("load", val * cpu_count, nil, nil)
+	AddDisplayValue("load", val * cpu_count, "%3.1f", nil)
 	AddDisplayValue("load_percent", val * 100.0, "% 3.1f", usage_color_map)
 	else
 	display_values["load"]="---"
@@ -914,13 +915,11 @@ end
 function LookupServicesUp()
 local i, url, toks, S
 
-if lookup_counter % 30 == 0
-then
-if lookup_values.ServicesUp ~= nil
+if lookup_counter % 30 == 0 and lookup_values.ServicesUp ~= nil
 then
 	for i,url in ipairs(lookup_values.ServicesUp)
 	do
-		S=stream.STREAM(url, "r timeout=20")
+		S=stream.STREAM("tcp:" .. url, "r timeout=20")
 		if S ~= nil 
 		then
 		display_values["up:"..url]="up"
@@ -930,6 +929,43 @@ then
 		end
 	end
 end
+
+end
+
+
+function LookupDNS()
+local i, lookup, host, str
+
+if lookup_counter % 30 ==0 and lookup_values.DNSLookups ~= nil
+then
+	for i,lookup in ipairs(lookup_values.DNSLookups)
+	do
+		if string.sub(lookup, 1, 6)=="dnsup:"
+		then 
+			host=string.sub(lookup, 7) 
+		elseif string.sub(lookup, 1, 4)=="dns:"
+		then 
+			host=string.sub(lookup, 5) 
+		else
+			host=lookup
+		end
+
+		str=net.lookupIP(host)
+		if str == nil then str="" end
+
+		if string.sub(lookup, 1, 6)=="dnsup:"
+		then
+
+			if string.len(str) > 0
+			then
+			display_values[lookup]="up"
+			else
+			display_values[lookup]="down"
+			end
+		else
+			display_values["dns:"..host]=str
+		end
+	end
 end
 
 end
@@ -991,6 +1027,13 @@ then
 	table.insert(lookup_values.ServicesUp, string.sub(name, 4))
 end
 
+if string.sub(name, 1, 4) == "dns:" or string.sub(name,1,6)=="dnsup:"
+then
+	table.insert(lookups, LookupDNS)
+	if lookup_values.DNSLookups == nil then lookup_values.DNSLookups={} end
+	table.insert(lookup_values.DNSLookups, name)
+end
+
 end
 
 
@@ -1019,15 +1062,34 @@ return lookups
 end
 
 
-function ProcessDisplayModules(value_name, value)
-local i, item, str
+function ProcessDisplayTranslations(value_name, ivalue)
+local i, item, value, translate, str
 
-str=value
+value=ivalue
+
+-- first we consider display modules, which are modules that can translate
+-- a string into another before it's displayed
 for i,item in ipairs(display_modules)
 do
-	if item.process ~= nil then str=item.process(value_name, str) end
+	if item.process ~= nil then value=item.process(value_name, value) end
 end
-return str
+
+-- 'value' is now either a copy of the original passed-in ivalue or
+-- the result of a display-module changing it. We now look this value up
+-- in our table of translations to see if we want it translated to another string
+
+--first look to see if there's a translation for value_name=value
+str=value_name.."="..value
+translate=display_translations[str]
+if translate ~= nil
+then
+	value=translate 
+else
+	translate=display_translations[value]
+	if translate ~= nil then value=translate end
+end
+
+return value
 end
 
 
@@ -1108,20 +1170,28 @@ end
 
 
 
+--this function does the actual building of the output string
+--it first calls all the lookups to get up-to-date values, then
+--builds an output string using those values and does any
+--display translation
 function SubstituteDisplayValues(settings)
 local toks, str, func, feed
 local output=""
 
+-- read up to date values from any key-value files
 for i,feed in ipairs(settings.datafeeds)
 do
 	if feed.type=="kvfile" then KvFileRead(feed) end
 end
 
+-- call alll lookup functions to get up to date values
 for i,func in ipairs(settings.lookups)
 do
 	func()
 end
 
+-- go through display string extracting any variables and
+-- substituting them for up-to-date values
 toks=strutil.TOKENIZER(settings.display, "$(|)", "ms")
 str=toks:next()
 while str ~= nil
@@ -1131,7 +1201,7 @@ do
 		str=toks:next()
 		if display_values[str] ~= nil 
 		then 
-			output=output .. ProcessDisplayModules(str, display_values[str])
+			output=output .. ProcessDisplayTranslations(str, display_values[str])
 		end
 	elseif strutil.strlen(str) and str ~= ")"
 	then
@@ -1160,6 +1230,7 @@ print("-fn <font name>    - font to use")
 print("-font <font name>  - font to use")
 print("-bg <color>        - background color")
 print("-fg <color>        - default font/foreground color")
+print("-tr <translation>  - translate a value to a different display value")
 print("-kvfile <path>     - path to a file that contains name-value pairs")
 print("-sock <path>       - path to a unix stream socket that receives name-value pairs")
 print("-onclick <command> - register a command to be used in clickable areas (see -help-onclick)")
@@ -1168,6 +1239,7 @@ print("-help-values       - list values recognized in format string")
 print("-help-onclick      - explain clickable area system")
 print("-help-images       - explain images display system")
 print("-help-sock         - explain datasocket system")
+print("-help-translate    - explain the value translate system")
 print("-?                 - this help")
 print("-help              - this help")
 print("--help             - this help")
@@ -1321,7 +1393,7 @@ end
 function DisplayHelpOnClick()
 
 print()
-print("Clickable areas are supported for dzen2 and lemonbar bars. These are defined using ~{ and ~} to mark the start and the end of a clickable area. These areas then match to -onclick options given on the barmad command line. The first '~{' in the display string matches the first -onclick option, and so on. For example:")
+print("Clickable areas are supported for dzen2 and lemonbar bars. These are defined using ~{ and ~} to mark the start and the end of a clickable area. These areas then match to -onclick options given on the barmaid command line. The first '~{' in the display string matches the first -onclick option, and so on. For example:")
 print()
 print("   lua barmaid.lua '~{ 1st on click~}  ~{ 2nd on click ~}' -onclick xterm -onclick 'links -g www.google.com'")
 print()
@@ -1333,11 +1405,72 @@ end
 
 
 
-function ParseCommandLine(args)
-settings={}
+function DisplayHelpTranslate()
+
+print()
+print("There are a two ways to translate a datavalue into something else for display. For instance, some datavalues hold the string 'up' or 'down' to indictate the state of something. Translation modules are lua plug-ins used to perform this task and are not discussed here (see barmaid.lua's README.md file for details). The other method for translating such values is the '-tr' command-line option, or the 'translate' config-file option. In both cases this system uses a configuration string of the form:")
+print()
+print("  <value>|<translation>")
+print()
+print("So for example, the following:")
+print()
+print("  up|~g up ~0")
+print()
+print("Could be used to color the string 'up' in green (for clarity extra spaces are added around 'up' in the translation). This method could also be used to map 'up' to an icon:")
+print()
+print("  up|~i{/usr/share/icons/okay.jpg}")
+print()
+print("This would map all values that consist of the word 'up' to the specified icon.")
+print()
+print("Sometimes there's a need to specify which value is being translated. Multiple different data lookups could return the same value, and you might want to color them differently. This is achieved with:")
+print()
+print("  <name>=<value>|<translation>")
+print()
+print("Where 'name' is the name of a value, and 'value' is it's actual displayed result. E.g.")
+print()
+print("  up:google.com:80=up|~gG~0")
+print()
+print("Could be used to supply a green 'G' to indicate google is accessible, but not interfere with any other values that return 'up'")
+print()
+print("EXAMPLE:")
+print()
+print("  barmaid.lua 'dns:$(dnsup:google.com)  $(up:google.com:80) $(up:freshcode.club:80) $(up:kernel.org:80)' -tr 'dnsup:google.com=up|~gup~0' -tr 'dnsup:google.com=down|~rDOWN~0' -tr 'up:google.com:80=up|~gG~0' -tr 'up:freshcode.club:80=up|~gF~0' -tr 'up:kernel.org:80=up|~gK~0'")
+print()
+print("This allows mapping the value 'up' for different variables to different output strings (admittedly all of them green in color).")
+print()
+
+print()
+
+os.exit(0)
+end
+
+
+
+-- parse a translation of a display output. This is a mapping of a string outputted by a value into
+-- another string. Both strings can include ~ formatting, so for instance it's possible to translate
+-- a string into an image like so:
+-- -tr 'yes:~i{/usr/share/images/ok.jpg}'
+function ParseDisplayTranslation(def)
+local toks
+
+toks=strutil.TOKENIZER(def, "|")
+str=toks:next()
+if str ~= nil 
+then 
+				display_translations[str]=toks:remaining() 
+end
+
+end
+
+
+-- set intital value of all settings
+function SettingsInit()
 
 settings.display="~w$(day_name)~0 $(day) $(month_name) ~y$(time)~0 $(bats:color) fs:$(fs:/:color)%  mem:$(mem:color)% load:$(load_percent:color)% cputemp:$(cpu_temp:color)c ~y$(ip4address:default)~0"
- 
+
+settings.config_files=process.getenv("HOME").."/.config/barmaid.conf"
+settings.config_files=settings.config_files .. ":" .. process.getenv("HOME").."/.barmaid.conf"
+settings.config_files=settings.config_files .. ":/etc/.barmaid.conf"
 settings.modules_dir="/usr/local/lib/barmaid/"
 settings.win_width=800
 settings.win_height=40
@@ -1351,10 +1484,123 @@ settings.steal_lines=0
 settings.datafeeds={}
 settings.onclicks={}
 
+return settings
+end
+
+
+function GeometryStringNext(toks)
+local tok
+
+tok=toks:next()
+if tok=="+" then return(tonumber(toks:next()))
+elseif tok=="-" then return(0-tonumber(toks:next()))
+else return(tonumber(toks:next()))
+end
+
+end
+
+
+function ParseGeometryString(geometry)
+local toks, tok
+
+toks=strutil.TOKENIZER(geometry, "+|-", "ms")
+settings.x=GeometryStringNext(toks)
+settings.y=GeometryStringNext(toks)
+settings.width=GeometryStringNext(toks)
+settings.length=GeometryStringNext(toks)
+
+end
+
+
+function LoadConfigFile(path)
+local S, str, name, value
+
+S=stream.STREAM(path, "r")
+if S ~= nil
+then
+str=S:readln()
+while str ~= nil
+do
+	str=strutil.trim(str)
+	toks=strutil.TOKENIZER(str, " ")
+	name=toks:next()
+	value=strutil.stripQuotes(toks:remaining())
+
+	if name=="display" or name=="display-string"
+	then 
+		settings.display=value
+	elseif name=="xpos"
+	then
+		settings.xpos=value
+	elseif name=="ypos"
+	then
+		settings.ypos=value
+	elseif name=="width"
+	then
+		settings.win_width=tonumber(value)
+	elseif name=="height"
+	then
+		settings.win_height=tonumber(value)
+	elseif name=="geometry"
+	then
+		ParseGeometryString(value)
+	elseif name=="font" or name=="fn"
+	then
+		settings.font=value
+	elseif name=="foreground" or name=="fg"
+	then
+		settings.foreground=value
+	elseif name=="background" or name=="bg"
+	then
+		settings.background=value
+	elseif name=="translate" or name=="tr"
+	then
+		ParseDisplayTranslation(value)
+	elseif name=="output" or name=="outtype"
+	then
+		settings.output=value
+	elseif name=="kvfile"
+	then
+		KvFileAdd(value)	
+	elseif name=="datasock"
+	then
+		DataSockAdd(value)	
+	elseif name=="onclick"
+	then
+		table.insert(settings.onclicks, value)
+	end
+	str=S:readln()
+end
+S:close()
+end
+
+end
+
+
+
+function LoadConfigFiles()
+local toks, path
+
+toks=strutil.TOKENIZER(settings.config_files, ":")
+path=toks:next()
+while path ~= nil
+do
+	if LoadConfigFile(path) then break end
+	path=toks:next()
+end
+
+end
+
+
+function ParseCommandLine(args)
+
 for i,str in ipairs(args)
 do
 
-	if str=="-w" then 
+	if str=="-c" then 
+		settings.config_files=args[i+1]
+		args[i+1]=""
+	elseif str=="-w" then 
 		settings.win_width=args[i+1]
 		args[i+1]=""
 	elseif str=="-h" then 
@@ -1383,6 +1629,10 @@ do
 	then
 		KvFileAdd(args[i+1])	
 		args[i+1]=""
+	elseif str=="-tr"
+	then
+		ParseDisplayTranslation(args[i+1])
+		args[i+1]=""
 	elseif str=="-sock"
 	then
 		DataSockAdd(args[i+1])	
@@ -1406,6 +1656,9 @@ do
 	elseif str=="-help-onclick" or str=="--help-onclick"
 	then
 		DisplayHelpOnClick()
+	elseif str=="-help-translate"
+	then
+		DisplayHelpTranslate()
 	elseif str=="-?" or str=="-help" or str=="--help"
 	then
 		DisplayHelp()
@@ -1419,7 +1672,6 @@ if settings.output=="terminal" then settings.output="term" end
 if settings.output=="term" then settings.steal_lines=2 end
 SelectOutput(settings)
 
-return settings
 end
 
 
@@ -1468,6 +1720,8 @@ local str, glob
 end
 
 
+
+-- this function handles output coming from the bar program (lemonbar is currently the only one we support this for)
 function ProcessBarProgramOutput(str)
 
 if settings.output=="lemonbar"
@@ -1490,7 +1744,10 @@ end
 -- assume our output device, whatever it is, can support unicode UTF8
 terminal.utf8(3)
 
-settings=ParseCommandLine(arg)
+SettingsInit()
+ParseCommandLine(arg)
+LoadConfigFiles()
+ParseCommandLine(arg)
 LoadModules()
 
 settings.lookups=LookupsFromDisplay(settings.display)
