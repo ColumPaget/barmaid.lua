@@ -138,7 +138,9 @@ load15min        15min load in 'top' format
 ip4address:      ip4address. Requires a network interface suffix, e.g. `$(ip4address:eth0)`
 ip4netmask:      ip4address. Requires a network interface suffix, e.g. `$(ip4address:eth0)`
 ip4broadcast:    ip4address. Requires a network interface suffix, e.g. `$(ip4address:eth0)`
-
+up:<host>:<port> connect to service at 'host' and 'port'. display 'up' if connection succeeds, 'down' if not
+dns:<host>       lookup 'host' and return its IP address              
+dnsup:<host>     lookup 'host' and return 'up' if a value is returned 'down' if not
 ```
 
 Please note, any value that has ':' at the end, takes an argument, like `bat:1` or `ip4address:eth0`.
@@ -166,13 +168,59 @@ Barmaid supports unicode UTF8 output. Unicode symbols can be included by either:
 2) Unicode glyph name. This requires a version of libUseful more recent than 4.38 and an '/etc/unicode-names.conf' file. This allows specifying unicode symbols via the notation: "~:music:"
 
 
+VALUE TRANSLATION
+=================
+
+There are a two ways to translate a datavalue into something else for display. For instance, some datavalues hold the string 'up' or 'down' to indictate the state of something. Reformat modules are lua plug-ins used to perform this task and are discussed in the 'MODULES' section below. The other method for translating such values is the '-tr' command-line option, or the 'translate' config-file option. In both cases this system uses a configuration string of the form:
+
+```
+  <value>|<translation>
+```
+
+So for example, the following:
+
+```
+  up|~g up ~0
+```
+
+Could be used to color the string 'up' in green (for clarity extra spaces are added around 'up' in the translation). This method could also be used to map 'up' to an icon:
+
+```
+  up|~i{/usr/share/icons/okay.jpg}
+```
+
+This would map all values that consist of the word 'up' to the specified icon.
+
+Sometimes there's a need to specify which value is being translated. Multiple different data lookups could return the same value, and you might want to color them differently. This is achieved with:
+
+```
+  <name>=<value>|<translation>
+```
+
+Where 'name' is the name of a value, and 'value' is it's actual displayed result. E.g.
+
+```
+  up:google.com:80=up|~gG~0
+```
+
+Could be used to supply a green 'G' to indicate google is accessible, but not interfere with any other values that return 'up'
+
+EXAMPLE:
+
+```
+  barmaid.lua 'dns:$(dnsup:google.com)  $(up:google.com:80) $(up:freshcode.club:80) $(up:kernel.org:80)' -tr 'dnsup:google.com=up|~gup~0' -tr 'dnsup:google.com=down|~rDOWN~0' -tr 'up:google.com:80=up|~gG~0' -tr 'up:freshcode.club:80=up|~gF~0' -tr 'up:kernel.org:80=up|~gK~0'
+```
+
+This allows mapping the value 'up' for different variables to different output strings (admittedly all of them green in color).
+
+
 
 MODULES
 =======
 
 Since version 3.0 barmaid supports modules. These are small lua scripts placed in a directory (/usr/local/lib/barmaid/) that can be used to extend barmaid's functionality. Two types of module exist: 'Information modules' that add new types of information to be displayed, and 'Reformat modules' that color, translate or otherwise modify the values to be displayed. 
 
-Two example information  modules already exist 'aurorawatch.lua' and 'isc.lua', displaying the aurorawatch status and Internet Storm Center Threat Level respectively. Modules work by putting an object into the table 'lookup_modules'. This object must have a '.init' function. This function will be called and passed a table and a 'display string'. This string contains all the variables that are needed to display the bar. The module should check if the name of the variable it will provide is in the string, and if so add a 'lookup' function to the supplied 'lookups' table. This lookup function will then be called when the data is needed. The module should get the data and put it into the table 'display_values' under the name that it will be called as. For instance, the Internet Storm Center threat level can be looked up via the variable '$(isc)' and so it's value is put into the 'display_values' table like this:
+Two example information  modules already exist 'aurorawatch.lua' and 'isc.lua', displaying the aurorawatch status and Internet Storm Center Threat Level respectively. Modules work by putting an object into the table 'lookup_modules'. This object must have a '.init' function. This function will be called and passed a 'lookups' table and a 'display string'. This string contains all the variables that are needed to display the bar. The module should check if the name of the variable it will provide is in the string, and if so add a 'lookup' function to the supplied 'lookups' table. This lookup function will then be called when the data is needed. The module should get the data and put it into the table 'display_values' under the name that it will be called as. For instance, the Internet Storm Center threat level can be looked up via the variable '$(isc)' and so it's value is put into the 'display_values' table like this:
 
 ```
 	display_values["isc"]=value
@@ -180,8 +228,46 @@ Two example information  modules already exist 'aurorawatch.lua' and 'isc.lua', 
 
 Some values, particularly those looked up via the internet, should not be looked up on every call of the lookup function. To assist with this there's a global 'lookup_counter' value that counts seconds since program startup. 
 
+'Reformat' modules are modules intended for the use of changing the displayed value that's output to the bar. Instead of being added to 'lookup_modules' table the object is added to the 'display_modules' table. The don't need an 'init' function, and the object aded to the 'display_modules' table only needs to contain as single function called 'process'. This function is called for every lookup value/type, and is passed the variables 'name' and 'value', representing the name and value of each variable that's going to be displayed. The function either returns 'value' unchanged, or else return some kind of translated value.
+
 An example 'reformat' module is also provided in the distribution.
 
+
+CONFIG FILE
+===========
+
+By default barmaid looks for config files in `~/.config/barmaid.conf`, `~/.barmaid.conf` and `/etc/barmaid.conf`. The '-c' command-line option allows changing this search path, like so:
+
+```
+  barmaid.lua -c /config/barmaid.conf:~/etc/barmaid.conf:/usr/local/etc/barmaid.conf
+```
+The config file contains entries of the form:                                                                                      
+
+```                                                                                                                                  <config type> <value>                                                                                                            ```  
+
+Possible config types are:
+
+```
+display            string to be displayed in the bar
+display-string     string to be displayed in the bar
+output             output type, 'dzen2', 'lemonbar', etc
+outtype            output type, 'dzen2', 'lemonbar', etc
+xpos               x-position, can be 'left', 'right', 'center' or a pixel-position
+ypos               y-position, can be 'left', 'right', 'center' or a pixel-position
+width              bar width in pixels
+height             bar height in pixels
+font               name of font to use in the bar
+fn                 name of font to use in the bar
+foreground         default foreground color
+fg                 default foreground color
+background         default background color
+bg                 default background color
+translate          translate a value to another (see --help-translations)
+tr                 translate a value to another (see --help-translations)
+kvfile             path to a key-value file
+datasock           path to a datasocket to receive key=value messages on
+onclick            configure an 'onclick' (see --help-onclick)
+```
 
 
 SCREENSHOTS

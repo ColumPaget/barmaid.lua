@@ -11,7 +11,7 @@ SHELL_OKAY=0
 SHELL_CLOSED=1
 SHELL_CLS=2
 
-version="4.0"
+version="5.0"
 settings={}
 lookup_counter=0
 lookup_values={}
@@ -1221,6 +1221,7 @@ print()
 print("usage:  lua barmaid.lua [options] [format string]")
 print()
 print("options:")
+print("-c <path>          - path to config file")
 print("-t <type>          - type of output. Possible values are 'dzen', 'lemonbar', 'xterm' and 'term'")
 print("-x <pos>           - x-position of window, in pixels or 'left', 'right', 'center'")
 print("-y <pos>           - y-position of window, in pixels or 'top', 'bottom'")
@@ -1240,6 +1241,7 @@ print("-help-onclick      - explain clickable area system")
 print("-help-images       - explain images display system")
 print("-help-sock         - explain datasocket system")
 print("-help-translate    - explain the value translate system")
+print("-help-configfile   - explain config files")
 print("-?                 - this help")
 print("-help              - this help")
 print("--help             - this help")
@@ -1270,7 +1272,7 @@ print()
 print("~i is a special case that allows the displaying of images in dzen2. See '-help-images'")
 print("~{ and ~} are special cases that define clickable areas. See '-help-onclick'")
 
-print("Some special values are availabel that automatically color themselves. See '-help-values'.") 
+print("Some special values are available that automatically color themselves. See '-help-values'.") 
 print()
 
 
@@ -1348,6 +1350,10 @@ print("load:color         system load (instantaneous cpu usage) in 'top' format"
 print("load1min:color     1min  load in 'top' format")
 print("load5min:color     5min  load in 'top' format")
 print("load15min:color    15min load in 'top' format")
+print("up:<host>:<port>   connect to service at 'host' and 'port'. display 'up' if connection succeeds, 'down' if not")
+print("dns:<host>         lookup 'host' and return its IP address")
+print("dnsup:<host>       lookup 'host' and return 'up' if a value is returned 'down' if not")
+
 print("")
 
 print("the ip4 values have a special case where the interface suffix is specified as 'default'. In this case the system will go with the first interface it finds that has an ip and isn't the local 'lo' interface")
@@ -1373,6 +1379,7 @@ print("   barmaid.lua 'events: $(@events)' -sock /tmp/barmaid.sock")
 print()
 print("will display a counter that can be incremented by sending '@events=something' to the datasocket. Every time such a message is recieved, the counter will increment. The counter can be reset to zero by setting the variable to an empty string by sending '@events='");
 print()
+
 os.exit(0)
 end
 
@@ -1386,6 +1393,7 @@ print("   ~i{/usr/share/icons/warning.jpg}")
 print()
 print("will display the image '/usr/share/icons/warning.jpg' in the dzen2 bar. Dzen2 only supports .xpm images by default, so barmaid.lua will use the ImageMagick 'convert' program to convert .png or .jpg files before displaying them.");
 print()
+
 os.exit(0)
 end
 
@@ -1446,6 +1454,43 @@ end
 
 
 
+
+function DisplayHelpConfig()
+print("By default barmaid looks for config files in ~/.config/barmaid.conf, ~/.barmaid.conf and /etc/barmaid.conf. The '-c' command-line option allows changing this search path, like so:")
+print()
+print("  barmaid.lua -c /config/barmaid.conf:~/etc/barmaid.conf:/usr/local/etc/barmaid.conf")
+print()
+print("The config file contains entries of the form:")
+print()
+print("<config type> <value>")
+print()
+print("Possible config types are:")
+print()
+print("display            string to be displayed in the bar")
+print("display-string     string to be displayed in the bar")
+print("output             output type, 'dzen2', 'lemonbar', etc")
+print("outtype            output type, 'dzen2', 'lemonbar', etc")
+print("xpos               x-position, can be 'left', 'right', 'center' or a pixel-position")
+print("ypos               y-position, can be 'left', 'right', 'center' or a pixel-position")
+print("width              bar width in pixels")
+print("height             bar height in pixels")
+print("font               name of font to use in the bar")
+print("fn                 name of font to use in the bar")
+print("foreground         default foreground color")
+print("fg                 default foreground color")
+print("background         default background color")
+print("bg                 default background color")
+print("translate          translate a value to another (see --help-translations")
+print("tr                 translate a value to another (see --help-translations")
+print("kvfile             path to a key-value file")
+print("datasock           path to a datasocket to receive key=value messages on")
+print("onclick            configure an 'onclick' (see --help-onclick)")
+
+os.exit(0)
+end
+
+
+
 -- parse a translation of a display output. This is a mapping of a string outputted by a value into
 -- another string. Both strings can include ~ formatting, so for instance it's possible to translate
 -- a string into an image like so:
@@ -1468,8 +1513,8 @@ function SettingsInit()
 
 settings.display="~w$(day_name)~0 $(day) $(month_name) ~y$(time)~0 $(bats:color) fs:$(fs:/:color)%  mem:$(mem:color)% load:$(load_percent:color)% cputemp:$(cpu_temp:color)c ~y$(ip4address:default)~0"
 
-settings.config_files=process.getenv("HOME").."/.config/barmaid.conf"
-settings.config_files=settings.config_files .. ":" .. process.getenv("HOME").."/.barmaid.conf"
+settings.config_files="~/.config/barmaid.conf"
+settings.config_files=settings.config_files .. ":" .. "~/.barmaid.conf"
 settings.config_files=settings.config_files .. ":/etc/.barmaid.conf"
 settings.modules_dir="/usr/local/lib/barmaid/"
 settings.win_width=800
@@ -1514,6 +1559,11 @@ end
 
 function LoadConfigFile(path)
 local S, str, name, value
+
+if string.sub(path, 1, 1) == "~"
+then
+path=process.getenv("HOME") .. string.sub(path, 2)
+end
 
 S=stream.STREAM(path, "r")
 if S ~= nil
@@ -1592,15 +1642,21 @@ end
 end
 
 
+function ParseCommandLineConfigFiles(args)
+
+for i,str in ipairs(args)
+do
+	if str=="-c" then settings.config_files=args[i+1] end
+end
+
+end
+
 function ParseCommandLine(args)
 
 for i,str in ipairs(args)
 do
 
-	if str=="-c" then 
-		settings.config_files=args[i+1]
-		args[i+1]=""
-	elseif str=="-w" then 
+	if str=="-w" then 
 		settings.win_width=args[i+1]
 		args[i+1]=""
 	elseif str=="-h" then 
@@ -1656,9 +1712,12 @@ do
 	elseif str=="-help-onclick" or str=="--help-onclick"
 	then
 		DisplayHelpOnClick()
-	elseif str=="-help-translate"
+	elseif str=="-help-translate" or str=="--help-translate"
 	then
 		DisplayHelpTranslate()
+	elseif str=="-help-config" or str=="--help-config"
+	then
+		DisplayHelpConfig()
 	elseif str=="-?" or str=="-help" or str=="--help"
 	then
 		DisplayHelp()
@@ -1666,6 +1725,7 @@ do
 	then
 		settings.display=args[i]
 	end	
+
 end
 
 if settings.output=="terminal" then settings.output="term" end
@@ -1745,7 +1805,7 @@ end
 terminal.utf8(3)
 
 SettingsInit()
-ParseCommandLine(arg)
+ParseCommandLineConfigFiles(arg)
 LoadConfigFiles()
 ParseCommandLine(arg)
 LoadModules()
