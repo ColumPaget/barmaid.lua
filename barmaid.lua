@@ -11,7 +11,7 @@ SHELL_OKAY=0
 SHELL_CLOSED=1
 SHELL_CLS=2
 
-version="5.0"
+version="5.1"
 settings={}
 lookup_counter=0
 lookup_values={}
@@ -22,6 +22,7 @@ display_translations={}
 poll_streams=stream.POLL_IO()
 shell=nil
 stdio=nil
+datasock=nil
 
 usage_color_map={
 				{value=0, color="~g"},
@@ -450,7 +451,7 @@ then
 	if strutil.strlen(settings.foreground) > 0 then str=str .. " -fg '" .. settings.foreground .. "'" end
 	if strutil.strlen(settings.background) > 0 then str=str .. " -bg '" .. settings.background .. "'" end
 	S=stream.STREAM(str)
-	poll_streams:add(S)
+	--poll_streams:add(S)
 elseif settings.output=="lemonbar"
 then
 	str="cmd:lemonbar -g " .. settings.win_width .. "x"..settings.win_height.."+"..xpos.."+0"
@@ -458,7 +459,7 @@ then
 	if strutil.strlen(settings.foreground) > 0 then str=str .. " -F '" .. settings.foreground .. "'" end
 	if strutil.strlen(settings.background) > 0 then str=str .. " -B '" .. settings.background .. "'" end
 	S=stream.STREAM(str)
-	poll_streams:add(S)
+	--poll_streams:add(S)
 elseif settings.output=="xterm" -- put bar in xterm title by wrapping terminal
 then
 	S=WrapTerminal(settings.steal_lines)
@@ -1097,9 +1098,13 @@ function KvLineRead(S)
 local str, toks, name
 
 str=S:readln()
+
 if str ~= nil
 then
 	str=strutil.trim(str)
+
+	if string.len(str) > 0
+	then
 	toks=strutil.TOKENIZER(str, "=")
 	name=toks:next()
 	if string.sub(name, 1,1)=="@"
@@ -1117,6 +1122,7 @@ then
 		display_values[name]=val
 	else
 		display_values[toks:next()]=toks:remaining()
+	end
 	end
 
 	return true
@@ -1162,7 +1168,7 @@ local Serv
 Serv=net.SERVER("unix:"..path)
 if Serv ~= nil 
 then 
-	settings.datasock=Serv
+	datasock=Serv
 	poll_streams:add(Serv:get_stream())
 end
 
@@ -1517,6 +1523,7 @@ settings.config_files="~/.config/barmaid.conf"
 settings.config_files=settings.config_files .. ":" .. "~/.barmaid.conf"
 settings.config_files=settings.config_files .. ":/etc/.barmaid.conf"
 settings.modules_dir="/usr/local/lib/barmaid/"
+settings.datasock=""
 settings.win_width=800
 settings.win_height=40
 settings.font=""
@@ -1614,7 +1621,7 @@ do
 		KvFileAdd(value)	
 	elseif name=="datasock"
 	then
-		DataSockAdd(value)	
+		settings.datasock=value
 	elseif name=="onclick"
 	then
 		table.insert(settings.onclicks, value)
@@ -1691,7 +1698,7 @@ do
 		args[i+1]=""
 	elseif str=="-sock"
 	then
-		DataSockAdd(args[i+1])	
+		settings.datasock=args[i+1]
 		args[i+1]=""
 	elseif str=="-onclick"
 	then
@@ -1812,6 +1819,7 @@ LoadModules()
 
 settings.lookups=LookupsFromDisplay(settings.display)
 Out=OpenOutput(settings)
+DataSockAdd(settings.datasock)	
 
 if settings.output=="term" 
 then
@@ -1862,6 +1870,7 @@ do
 	end
 	
 	S=poll_streams:select(100)
+
 	if S ~= nil
 	then
 		if S==stdio 
@@ -1878,9 +1887,9 @@ do
 		ProcessBarProgramOutput(S:readln())
 		-- our listening datasocket has recieved a connection, accept a new client who will
 		-- send us messages
-		elseif S==settings.datasock:get_stream()
+		elseif S==datasock:get_stream()
 		then
-			S=settings.datasock:accept()
+			S=datasock:accept()
 			poll_streams:add(S)
 		-- anything else must be coming from a client program that has connected to our datasock
 		elseif KvLineRead(S) == false
