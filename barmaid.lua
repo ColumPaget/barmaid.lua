@@ -495,9 +495,19 @@ function GetBattery(name, path)
 local bat={}
 
 bat.name=name
+bat.charge=0
+bat.max=0
+
 bat.status=SysReadFile(path.."/status")
+if filesys.exists(path.."/charge_full") ==true 
+then
 bat.charge=tonumber(SysReadFile(path.."/charge_now"))
 bat.max=tonumber(SysReadFile(path.."/charge_full"))
+elseif filesys.exists(path.."/energy_full") ==true 
+then
+bat.charge=tonumber(SysReadFile(path.."/energy_now"))
+bat.max=tonumber(SysReadFile(path.."/energy_full"))
+end
 
 return bat
 end
@@ -512,7 +522,9 @@ str=Glob:next()
 while str ~= nil 
 do
 	name=filesys.basename(str)
-	if filesys.exists(str.."/charge_full") ==true
+	if 
+	filesys.exists(str.."/charge_full") ==true or
+	filesys.exists(str.."/energy_full") ==true
 	then
 		bat=GetBattery(name, str)
 		table.insert(bats, bat)
@@ -540,8 +552,14 @@ bats=GetBatteries()
 
 for i,bat in ipairs(bats)
 do
-	name="bat:"..i
+	name="bat:"..tostring(i-1)
+	if bat.max > 0
+	then
 	perc=math.floor((bat.charge * 100 / bat.max) + 0.5)
+	else
+	perc=0
+	end
+
 	AddDisplayValue(name, perc, "%d", color_map)
 	if bat.status == "Charging" then display_values["charging:"..i]="~~" end
 
@@ -990,7 +1008,7 @@ then
 		table.insert(lookups, LookupTimes)
 end
 
-if string.sub(name, 1, 4) == "bat:"
+if string.sub(name, 1, 4) == "bat:" or string.sub(name, 1, 5) == "bats:"
 then
 	table.insert(lookups, LookupBatteries)
 end
