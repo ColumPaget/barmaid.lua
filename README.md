@@ -45,7 +45,7 @@ and this can then be displayed by adding the `Â$(days2christmas)` variable to th
 
 The `-sock` option specifies a path to a unix socket that other programs can connect to and send name-value pairs that can then be used in the format string, using the same message format format as for -kvfile.
 
-Both `-kvfile` and `-sock` support specail name-value pairs whose name begins with '@'. These are treated as counters, so that instead of storing the sent value, the counter increments. If a blank string is sent as the value, the counter will reset to zero. 
+Both `-kvfile` and `-sock` support special name-value pairs whose name begins with '@'. These are treated as counters, so that instead of storing the sent value, the counter increments. If a blank string is sent as the value, the counter will reset to zero. 
 
 Finally the `format string` is the string to display. Values within `$()` will be substituted by the program with the appropriate data, like this:
 

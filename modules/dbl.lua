@@ -73,10 +73,19 @@ local var_names, i, var
 var_names=GetDisplayVars(display_str)
 for i, var in ipairs(var_names)
 do
-if string.sub(var, 1, 4) == "dbl:"
+
+prefix=string.sub(var, 1, 1)
+if prefix=="$" or prefix=="@" or prefix==">" 
+then
+	name=string.sub(var, 3, string.len(var) -1)
+else
+	name=var
+end
+
+if string.sub(name, 1, 4) == "dbl:"
 then
 	if lookup_values.dbl_ip_list==nil then lookup_values.dbl_ip_list={} end
-	table.insert(lookup_values.dbl_ip_list, var)
+	table.insert(lookup_values.dbl_ip_list, name)
 end
 
 if lookup_values.dbl_ip_list ~= nil then table.insert(lookups, DBL_Process) end

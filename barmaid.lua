@@ -94,11 +94,11 @@ end
 function GetDisplayVars(str)
 local vars={}
 
-toks=strutil.TOKENIZER(settings.display, "$(|)", "ms")
+toks=strutil.TOKENIZER(settings.display, "$(|@(|>(|)", "ms")
 str=toks:next()
 while str ~= nil
 do
-	if str=="$(" then table.insert(vars, toks:next()) end
+	if str=="$(" or str=="@(" or str==">(" then table.insert(vars, str..toks:next()..")") end
 	str=toks:next()
 end
 
@@ -451,7 +451,6 @@ then
 	if strutil.strlen(settings.foreground) > 0 then str=str .. " -fg '" .. settings.foreground .. "'" end
 	if strutil.strlen(settings.background) > 0 then str=str .. " -bg '" .. settings.background .. "'" end
 	S=stream.STREAM(str)
-	--poll_streams:add(S)
 elseif settings.output=="lemonbar"
 then
 	str="cmd:lemonbar -g " .. settings.win_width .. "x"..settings.win_height.."+"..xpos.."+0"
@@ -459,7 +458,6 @@ then
 	if strutil.strlen(settings.foreground) > 0 then str=str .. " -F '" .. settings.foreground .. "'" end
 	if strutil.strlen(settings.background) > 0 then str=str .. " -B '" .. settings.background .. "'" end
 	S=stream.STREAM(str)
-	--poll_streams:add(S)
 elseif settings.output=="xterm" -- put bar in xterm title by wrapping terminal
 then
 	S=WrapTerminal(settings.steal_lines)
@@ -995,10 +993,19 @@ end
 -- display bar
 function InitializeLookup(lookups, name)
 local check_names={}
+local prefix
 
 -- set any counter vars to zero initially, so that when the lookup
 -- function is called it's counting from the right value!
-if string.sub(name, 1, 1)=="@" then display_values[name]=0 end
+prefix=string.sub(name, 1, 1)
+name=string.sub(name, 3, string.len(name) -1)
+
+if prefix=="@" or prefix==">" 
+then 
+	display_values[name]=0 
+end
+
+
 
 check_names={["time"]=1, ["date"]=1, ["day_name"]=1, ["day"]=1, ["month"]=1, ["month_name"]=1, ["year"]=1, ["hours"]=1, ["minutes"]=1, ["mins"]=1, ["seconds"]=1, ["secs"]=1}
 
@@ -1052,7 +1059,6 @@ then
 	if lookup_values.DNSLookups == nil then lookup_values.DNSLookups={} end
 	table.insert(lookup_values.DNSLookups, name)
 end
-
 end
 
 
@@ -1112,34 +1118,69 @@ return value
 end
 
 
-function KvLineRead(S)
-local str, toks, name
 
-str=S:readln()
+function KvUpdateCounter(name, value)
+local val
 
-if str ~= nil
+if strutil.strlen(value)==0
+then 
+	val=0
+elseif display_values[name] ~= nil 
+then 
+	val=tonumber(display_values[name]) +1
+else 
+	val=1 
+end
+
+display_values[name]=val
+end
+
+
+function KvUpdateListFile(name, value)
+local S, path, mode
+
+path=process.getenv("HOME").."/.barmaid/"..name..".lst"
+filesys.mkdirPath(path)
+if strutil.strlen(value) == 0 then mode="w"
+else mode="a" 
+end
+
+S=stream.STREAM(path, mode)
+if S ~= nil
 then
-	str=strutil.trim(str)
+S:writeln(value.."\n")
+S:close()
+end
 
-	if string.len(str) > 0
+end
+
+
+function KvLineRead(S)
+local line, str, toks, prefix, name, value
+
+line=S:readln()
+
+if line ~= nil
+then
+	line=strutil.trim(line)
+
+	if string.len(line) > 0
 	then
-	toks=strutil.TOKENIZER(str, "=")
-	name=toks:next()
-	if string.sub(name, 1,1)=="@"
+	toks=strutil.TOKENIZER(line, "=")
+	str=toks:next()
+	prefix=string.sub(str, 1, 1)
+	name=string.sub(str, 2)
+	value=toks:remaining()
+
+	if prefix=="@"
 	then
-
-		if strutil.strlen(toks:remaining())==0
-		then 
-			val=0
-		elseif display_values[name] ~= nil 
-		then 
-			val=tonumber(display_values[name]) +1
-		else val=1 
-		end
-
-		display_values[name]=val
-	else
-		display_values[toks:next()]=toks:remaining()
+		KvUpdateCounter(name, value)
+	elseif prefix==">"
+	then
+		KvUpdateCounter(name, value)
+		KvUpdateListFile(name, value)
+	else -- if prefix isn't a prefix char, then name is the whole of 'str'
+		display_values[str]=toks:remaining()
 	end
 	end
 
@@ -1216,11 +1257,11 @@ end
 
 -- go through display string extracting any variables and
 -- substituting them for up-to-date values
-toks=strutil.TOKENIZER(settings.display, "$(|)", "ms")
+toks=strutil.TOKENIZER(settings.display, "$(|@(|>(|)", "ms")
 str=toks:next()
 while str ~= nil
 do
-	if str=="$("
+	if str=="$(" or str=="@(" or str==">("
 	then
 		str=toks:next()
 		if display_values[str] ~= nil 
@@ -1265,7 +1306,7 @@ print("-help-onclick      - explain clickable area system")
 print("-help-images       - explain images display system")
 print("-help-sock         - explain datasocket system")
 print("-help-translate    - explain the value translate system")
-print("-help-configfile   - explain config files")
+print("-help-config       - explain config files")
 print("-?                 - this help")
 print("-help              - this help")
 print("--help             - this help")
@@ -1809,6 +1850,7 @@ end
 -- this function handles output coming from the bar program (lemonbar is currently the only one we support this for)
 function ProcessBarProgramOutput(str)
 
+print("OUT: "..str)
 if settings.output=="lemonbar"
 then
 
@@ -1836,8 +1878,9 @@ ParseCommandLine(arg)
 LoadModules()
 
 settings.lookups=LookupsFromDisplay(settings.display)
-Out=OpenOutput(settings)
 DataSockAdd(settings.datasock)	
+Out=OpenOutput(settings)
+poll_streams:add(Out)
 
 if settings.output=="term" 
 then
