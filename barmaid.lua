@@ -11,7 +11,7 @@ SHELL_OKAY=0
 SHELL_CLOSED=1
 SHELL_CLS=2
 
-version="5.1"
+version="5.2"
 settings={}
 lookup_counter=0
 lookup_values={}
@@ -251,7 +251,7 @@ end
 
 translations.add=function(self, pattern, value)
 
-if string.find(pattern, "*") ~= nil
+if string.find(pattern, "[*+?%[%]]") ~= nil
 then
 	self.by_pattern[pattern]=value
 else

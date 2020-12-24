@@ -47,6 +47,8 @@ The `-sock` option specifies a path to a unix socket that other programs can con
 
 Both `-kvfile` and `-sock` support special name-value pairs whose name begins with '@'. These are treated as counters, so that instead of storing the sent value, the counter increments. If a blank string is sent as the value, the counter will reset to zero. 
 
+Both `-kvfile` and `-sock` support special name-value pairs whose name begins with '>'. These work like the counters above, but in addition are stored as lists in files at '~/.barmaid/<name>.lst'. An on-click can then be used to launch some program that will display the list.  If a blank string is sent as the value the counter will reset to zero and the list will be cleared. 
+
 Finally the `format string` is the string to display. Values within `$()` will be substituted by the program with the appropriate data, like this:
 
 ```
@@ -203,7 +205,9 @@ Where 'name' is the name of a value, and 'value' is it's actual displayed result
   up:google.com:80=up|~gG~0
 ```
 
-Could be used to supply a green 'G' to indicate google is accessible, but not interfere with any other values that return 'up'
+Could be used to supply a green 'G' to indicate google is accessible, but not interfere with any other values that return 'up'.
+
+The 'key' of the translation (i.e. 'name=value') can contain shell/fnmatch-style wildcards. The symbols '*', '+', '?', '[' and ']' will be honored with their shell/fnmatch meanings. '\' can be used to quote these characters.
 
 EXAMPLE:
 
