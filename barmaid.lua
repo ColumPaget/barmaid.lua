@@ -18,7 +18,7 @@ lookup_values={}
 display_values={}
 lookup_modules={}
 display_modules={}
-display_translations={}
+display_translations=nil
 poll_streams=stream.POLL_IO()
 shell=nil
 stdio=nil
@@ -196,6 +196,88 @@ item=ConvertImageToXPM(item)
 i=i+val-1
 
 return i,item
+end
+
+
+
+
+function DisplayTranslations()
+translations={}
+
+translations.by_name={}
+translations.by_pattern={}
+
+
+translations.lookup=function(self, str)
+local item, pattern
+
+item=self.by_name[str]
+if item ~= nil then return item end
+
+for pattern,item in ipairs (self.by_pattern)
+do
+	if strutil.pmatch(pattern, str) == true then return item end
+end
+
+return nil
+end
+
+
+translations.process=function(self, value_name, ivalue)
+local i, item, value, translate, str
+
+value=ivalue
+
+-- first we consider display modules, which are modules that can translate
+-- a string into another before it's displayed
+for i,item in ipairs(display_modules)
+do
+	if item.process ~= nil then value=item.process(value_name, value) end
+end
+
+-- 'value' is now either a copy of the original passed-in ivalue or
+-- the result of a display-module changing it. We now look this value up
+-- in our table of translations to see if we want it translated to another string
+
+--first look to see if there's a translation for value_name=value
+str=value_name.."="..value
+translate=self:lookup(str)
+if translate==nil then translate=self:lookup(value) end
+if translate ~= nil then value=translate end
+
+return value
+end
+
+
+translations.add=function(self, pattern, value)
+
+if string.find(pattern, "*") ~= nil
+then
+	self.by_pattern[pattern]=value
+else
+	self.by_name[pattern]=value
+end
+
+end
+
+-- parse a translation of a display output. This is a mapping of a string outputted by a value into
+-- another string. Both strings can include ~ formatting, so for instance it's possible to translate
+-- a string into an image like so:
+-- -tr 'yes:~i{/usr/share/images/ok.jpg}'
+translations.parse=function(self, def)
+local toks, str
+
+toks=strutil.TOKENIZER(def, "|")
+str=toks:next()
+if str ~= nil 
+then 
+	self:add(str, toks:remaining())
+end
+
+end
+
+
+return translations
 end
 
 
@@ -1087,36 +1169,6 @@ return lookups
 end
 
 
-function ProcessDisplayTranslations(value_name, ivalue)
-local i, item, value, translate, str
-
-value=ivalue
-
--- first we consider display modules, which are modules that can translate
--- a string into another before it's displayed
-for i,item in ipairs(display_modules)
-do
-	if item.process ~= nil then value=item.process(value_name, value) end
-end
-
--- 'value' is now either a copy of the original passed-in ivalue or
--- the result of a display-module changing it. We now look this value up
--- in our table of translations to see if we want it translated to another string
-
---first look to see if there's a translation for value_name=value
-str=value_name.."="..value
-translate=display_translations[str]
-if translate ~= nil
-then
-	value=translate 
-else
-	translate=display_translations[value]
-	if translate ~= nil then value=translate end
-end
-
-return value
-end
-
 
 
 function KvUpdateCounter(name, value)
@@ -1266,7 +1318,7 @@ do
 		str=toks:next()
 		if display_values[str] ~= nil 
 		then 
-			output=output .. ProcessDisplayTranslations(str, display_values[str])
+			output=output .. display_translations:process(str, display_values[str])
 		end
 	elseif strutil.strlen(str) and str ~= ")"
 	then
@@ -1556,23 +1608,6 @@ end
 
 
 
--- parse a translation of a display output. This is a mapping of a string outputted by a value into
--- another string. Both strings can include ~ formatting, so for instance it's possible to translate
--- a string into an image like so:
--- -tr 'yes:~i{/usr/share/images/ok.jpg}'
-function ParseDisplayTranslation(def)
-local toks
-
-toks=strutil.TOKENIZER(def, "|")
-str=toks:next()
-if str ~= nil 
-then 
-				display_translations[str]=toks:remaining() 
-end
-
-end
-
-
 -- set intital value of all settings
 function SettingsInit()
 
@@ -1671,7 +1706,7 @@ do
 		settings.background=value
 	elseif name=="translate" or name=="tr"
 	then
-		ParseDisplayTranslation(value)
+		display_translations:parse(value)
 	elseif name=="output" or name=="outtype"
 	then
 		settings.output=value
@@ -1872,6 +1907,7 @@ end
 terminal.utf8(3)
 
 SettingsInit()
+display_translations=DisplayTranslations()
 ParseCommandLineConfigFiles(arg)
 LoadConfigFiles()
 ParseCommandLine(arg)
