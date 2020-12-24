@@ -214,7 +214,7 @@ local item, pattern
 item=self.by_name[str]
 if item ~= nil then return item end
 
-for pattern,item in ipairs (self.by_pattern)
+for pattern,item in pairs (self.by_pattern)
 do
 	if strutil.pmatch(pattern, str) == true then return item end
 end
