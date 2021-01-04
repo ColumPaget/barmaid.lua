@@ -11,7 +11,7 @@ SHELL_OKAY=0
 SHELL_CLOSED=1
 SHELL_CLS=2
 
-version="5.2"
+version="5.3"
 settings={}
 lookup_counter=0
 lookup_values={}
@@ -808,6 +808,7 @@ then
 	value=toks:next()
 	if name=="MemTotal" then totalmem=tonumber(value) end
 	if name=="MemAvailable" then availmem=tonumber(value) end
+	if name=="Cached" then cachedmem=tonumber(value) end
 	str=S:readln()
 	end
 	S:close()
@@ -819,9 +820,17 @@ end
 display_values["usedmem"]=strutil.toMetric(totalmem-availmem)
 display_values["freemem"]=strutil.toMetric(availmem)
 display_values["totalmem"]=strutil.toMetric(totalmem)
+display_values["cachedmem"]=strutil.toMetric(cachedmem)
+
+
+mem_perc=availmem * 100 / totalmem
+AddDisplayValue("free", mem_perc, "% 3.1f", usage_color_map)
 
 mem_perc=100.0 - (availmem * 100 / totalmem)
 AddDisplayValue("mem", mem_perc, "% 3.1f", usage_color_map)
+
+mem_perc=cachedmem * 100 / totalmem
+AddDisplayValue("cmem", mem_perc, "% 3.1f", usage_color_map)
 
 
 --do all the same for swap
@@ -1082,9 +1091,13 @@ local prefix
 prefix=string.sub(name, 1, 1)
 name=string.sub(name, 3, string.len(name) -1)
 
-if prefix=="@" or prefix==">" 
+if prefix=="@" 
+then
+	display_values[name]=0 
+elseif prefix==">" 
 then 
 	display_values[name]=0 
+	KvUpdateListFile(name, value)
 end
 
 
@@ -1200,7 +1213,7 @@ end
 S=stream.STREAM(path, mode)
 if S ~= nil
 then
-S:writeln(value.."\n")
+if strutil.strlen(value) > 0 then S:writeln(value.."\n") end
 S:close()
 end
 
@@ -1331,6 +1344,7 @@ return output
 end
 
 
+
 function DisplayHelp()
 print()
 print("barmaid.lua  version: " .. version)
@@ -1431,6 +1445,7 @@ print("mem            percent memory usage")
 print("usedmem        used memory in metric format")
 print("freemem        free memory in metric format")
 print("totalmem       total memory in metric format")
+print("cachedmem      cached memory in metric format, this can include ramdisks etc")
 print("swap           percent swap space usage")
 print("usedswap       used swap in metric format")
 print("freeswap       free swap in metric format")
@@ -1452,9 +1467,8 @@ print("Available auto-colored values are:")
 print()
 print("cpu_temp:color     cpu temperature in celsius. Currently only works on systems that have x86_pkg_temp or coretemp type sensors. For multicore systems displays the highest across all CPUs.")
 print("mem:color          percent memory usage")
-print("usedmem:color      used memory in metric format")
-print("freemem:color      free memory in metric format")
-print("totalmem:color     total memory in metric format")
+print("free:color         percent memory free")
+print("cmem:color         percent of memory that is cache")
 print("swap:color         percent swap space usage")
 print("usedswap:color     used swap in metric format")
 print("freeswap:color     free swap in metric format")
