@@ -989,32 +989,68 @@ LookupMemInfo();
 end
 
 
+function LookupDefaultRouteIfaceParse(str) 
+local toks
+local iface, route
+
+toks=strutil.TOKENIZER(str, "\\S")
+iface=toks:next()
+route=toks:next()
+
+return iface, route
+end
+
+
+function LookupDefaultRouteIface()
+local S, str, iface, dest
+
+S=stream.STREAM("/proc/net/route", "r")
+if (S)
+then
+  str=S:readln() -- read 'header' line
+  str=S:readln()
+  while str ~= nil
+  do
+    iface,dest=LookupDefaultRouteIfaceParse(str) 
+    if dest == "00000000" 
+    then 
+	S:close()
+	return iface 
+    end
+    str=S:readln()
+  end
+end
+
+S:close()
+return nil
+end
+
 
 function LookupIPv4()
-local str, toks
+local iface, toks, default_iface
 
+default_iface=LookupDefaultRouteIface()
 toks=strutil.TOKENIZER(sys.interfaces(), " ")
-str=toks:next()
-while str ~= nil
+iface=toks:next()
+while iface ~= nil
 do
 
-if strutil.strlen(sys.ip4address(str)) > 0
+if strutil.strlen(sys.ip4address(iface)) > 0
 then
-	display_values["ip4address:"..str]=sys.ip4address(str)
-	display_values["ip4netmask:"..str]=sys.ip4netmask(str)
-	display_values["ip4broadcast:"..str]=sys.ip4broadcast(str)
+	display_values["ip4address:"..iface]=sys.ip4address(iface)
+	display_values["ip4netmask:"..iface]=sys.ip4netmask(iface)
+	display_values["ip4broadcast:"..iface]=sys.ip4broadcast(iface)
 
-	--eventually we will find the default route and decide the default
-	--interface from that, but for now this hack is often good enough
-	if str ~= "lo"
+	if iface == default_iface
 	then
-	display_values["ip4address:default"]=sys.ip4address(str)
-	display_values["ip4netmask:default"]=sys.ip4netmask(str)
-	display_values["ip4broadcast:default"]=sys.ip4broadcast(str)
+	display_values["ip4interface:default"]=iface
+	display_values["ip4address:default"]=sys.ip4address(iface)
+	display_values["ip4netmask:default"]=sys.ip4netmask(iface)
+	display_values["ip4broadcast:default"]=sys.ip4broadcast(iface)
 	end
 end
 
-str=toks:next()
+iface=toks:next()
 end
 
 end

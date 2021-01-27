@@ -137,9 +137,10 @@ load:color       instantaneous load/cpu usage in 'top' format
 load1min         1min load in 'top' format
 load5min         5min load in 'top' format
 load15min        15min load in 'top' format
-ip4address:      ip4address. Requires a network interface suffix, e.g. `$(ip4address:eth0)`
-ip4netmask:      ip4address. Requires a network interface suffix, e.g. `$(ip4address:eth0)`
-ip4broadcast:    ip4address. Requires a network interface suffix, e.g. `$(ip4address:eth0)`
+ip4interface:    requires the suffix 'default', so 'ip4interface:default' returns name of interface that has the ip4 default route
+ip4address:      ip4address. Requires a network interface suffix, e.g. `$(ip4address:eth0)` or `$(ip4address:default)` for ip address on default-route interface
+ip4netmask:      ip4netmask. Requires a network interface suffix, e.g. `$(ip4netmask:eth0)``$(ip4netmask:default)` for ip netmask on default-route interface
+ip4broadcast:    ip4broadcast. Requires a network interface suffix, e.g. `$(ip4broadcast:eth0)`
 up:<host>:<port> connect to service at 'host' and 'port'. display 'up' if connection succeeds, 'down' if not
 dns:<host>       lookup 'host' and return its IP address              
 dnsup:<host>     lookup 'host' and return 'up' if a value is returned 'down' if not
