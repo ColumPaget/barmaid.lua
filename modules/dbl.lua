@@ -8,7 +8,7 @@
 
 --service list. You can add extra services here
 dbl_services={"bl.spamcop.net", "sbl.spamhaus.org", "virus.rbl.jp", "cbl.abuseat.org", "dyna.spamrats.com","b.barracudacentral.org"}
-
+proc=nil
 
 
 function DBL_Lookup(ip, service)
@@ -45,25 +45,38 @@ return false
 end
 
 
-function DBL_Process()
-local S, ip
-
-
-if lookup_counter % 360 == 0
-then
+function DBL_ProcessLookups()
+local i, ip
 
 for i,ip in ipairs(lookup_values.dbl_ip_list)
 do
-	if DBL_ProcessServices(string.sub(ip, 5), service) == true 
+	if DBL_ProcessServices(string.sub(ip, 5)) == true 
 	then 
-		display_values[ip]="yes"
+		io.stdout:write(ip.."=yes\n")
+		io.stdout:flush()
 	else
-		display_values[ip]="no"
+		io.stdout:write(ip.."=no\n")
+		io.stdout:flush()
 	end
 end
 
 end
 
+
+function DBL_Process()
+
+
+if lookup_counter % 360 == 0
+then
+	proc=process.PROCESS("")
+	if proc ==nil
+	then
+		DBL_ProcessLookups()
+		os.exit()
+	else
+		poll_streams:add(proc:get_stream())
+	end
+end
 end
 
 
@@ -74,22 +87,23 @@ var_names=GetDisplayVars(display_str)
 for i, var in ipairs(var_names)
 do
 
-prefix=string.sub(var, 1, 1)
-if prefix=="$" or prefix=="@" or prefix==">" 
-then
+	prefix=string.sub(var, 1, 1)
+	if prefix=="$" or prefix=="@" or prefix==">" 
+	then
 	name=string.sub(var, 3, string.len(var) -1)
-else
+	else
 	name=var
-end
+	end
 
-if string.sub(name, 1, 4) == "dbl:"
-then
+	if string.sub(name, 1, 4) == "dbl:"
+	then
 	if lookup_values.dbl_ip_list==nil then lookup_values.dbl_ip_list={} end
 	table.insert(lookup_values.dbl_ip_list, name)
+	end
+
 end
 
 if lookup_values.dbl_ip_list ~= nil then table.insert(lookups, DBL_Process) end
-end
 end
 
 

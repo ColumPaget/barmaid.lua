@@ -1935,7 +1935,6 @@ end
 -- this function handles output coming from the bar program (lemonbar is currently the only one we support this for)
 function ProcessBarProgramOutput(str)
 
-print("OUT: "..str)
 if settings.output=="lemonbar"
 then
 
