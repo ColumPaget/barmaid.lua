@@ -1,10 +1,10 @@
-Barmaid.lua - a status bar tool for dzen2, lemonbar, xterm titles and ansi terminal
+Barmaid.lua - a status bar tool for dzen2, lemonbar, xterm titles, dwm and ansi terminal
 ====================================================================
 
 SYNOPSIS
 ========
 
-barmaid.lua is a status-bar generation program with unicode and modules support. It is written in lua using libUseful-lua. It can generate output suitable for dzen2, lemonbar, xterm title-bars and the terminal. It can display info on date, time, system load, memory usage, partition usage, cpu usage, ip4 address/netmask/broadcast, hostname, kernel, architecture, ostype, uptime, cpu count, battery level, and cpu temperature. No external programs are run to generate this data, so barmaid's resource usage should be low. Unfortuantely, as barmaid pulls a lot of data from /proc and /sys, it's a mostly linux-only program. Barmaid is extensible via its modules system.
+barmaid.lua is a status-bar generation program with unicode and modules support. It is written in lua using libUseful-lua. It can generate output suitable for dzen2, lemonbar, xterm title-bars, dwm and the terminal. It can display info on date, time, system load, memory usage, partition usage, cpu usage, ip4 address/netmask/broadcast, hostname, kernel, architecture, ostype, uptime, cpu count, battery level, and cpu temperature. No external programs are run to generate this data, so barmaid's resource usage should be low. Unfortuantely, as barmaid pulls a lot of data from /proc and /sys, it's a mostly linux-only program. Barmaid is extensible via its modules system.
 
 INSTALL
 =======
@@ -20,7 +20,7 @@ lua barmaid.lua [-t output_type] [-type output_type] [-x xpos] [-y ypos] [-w wid
 
 online help can be called up with 'lua barmaid.lua -help' 
 
-the `-t` or `-type` option sets the output type, which can be 'dzen2', 'lemonbar', 'xterm', 'terminal' or 'term'. 
+the `-t` or `-type` option sets the output type, which can be 'dzen2', 'lemonbar', 'dwm', 'xterm', 'terminal' or 'term'. 
 
 The `-x`, `-y`, `-w` and `-h` options set the x and y position of the bar, and its width and height, in pixels. The `-x` position option can also accept 'left', 'right' and 'center' as screen positions. The `-y` option can accept `top` and `bottom`, with the `bottom` argument causing special behavior in terminal mode (see below). None of these work in 'xterm' mode.
 
@@ -82,7 +82,7 @@ So, for example:
 Will display the words 'disk:' and 'mem:' in blue, in front of the values for root-partition usage and memory usage, which will be in the default color.
 
 ```
-	~R~w$(hour):$(minutes)~0 $(date)" 
+	~R~w$(hour):$(minutes)~0 $(date)
 ```
 
 Will display the time (hours and minutes) in white on a red background, and the date with the default colors.
@@ -255,8 +255,8 @@ Possible config types are:
 ```
 display            string to be displayed in the bar
 display-string     string to be displayed in the bar
-output             output type, 'dzen2', 'lemonbar', etc
-outtype            output type, 'dzen2', 'lemonbar', etc
+output             output type, 'dzen2', 'lemonbar', 'dwm', etc
+outtype            output type, 'dzen2', 'lemonbar', 'dwm', etc
 xpos               x-position, can be 'left', 'right', 'center' or a pixel-position
 ypos               y-position, can be 'left', 'right', 'center' or a pixel-position
 width              bar width in pixels

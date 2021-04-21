@@ -399,13 +399,13 @@ return(outstr)
 end
 
 
-
-function XtermTitleTranslateOutput(str)
-local outstr=""
+--basically strips all color formatting for status bars that do not
+--support this
+function MonochromeTranslateOutput(str)
 local i=1
 local len, char
+local outstr=""
 
-outstr="\x1b]2;"
 len=strutil.strlen(str)
 while i <= len
 do
@@ -421,8 +421,14 @@ do
 
 	i=i+1
 end
-outstr=outstr.."\x07"
+
 return(outstr)
+end
+
+
+-- build escape sequence to set text in xterm title bar
+function XtermTitleTranslateOutput(str)
+return("\x1b]2;" .. MonochromeTranslateOutput(str) ..  "\x07")
 end
 
 
@@ -453,6 +459,9 @@ local str
 	elseif settings.output=="xterm"
 	then
 		return(XtermTitleTranslateOutput(input))
+	elseif settings.output=="dwm"
+	then
+		return(MonochromeTranslateOutput(input))
 	else
 		return(TerminalTranslateOutput(settings, input))
 	end
@@ -1389,7 +1398,7 @@ print("usage:  lua barmaid.lua [options] [format string]")
 print()
 print("options:")
 print("-c <path>          - path to config file")
-print("-t <type>          - type of output. Possible values are 'dzen', 'lemonbar', 'xterm' and 'term'")
+print("-t <type>          - type of output. Possible values are 'dzen', 'lemonbar', 'xterm', 'dwm' and 'term'")
 print("-x <pos>           - x-position of window, in pixels or 'left', 'right', 'center'")
 print("-y <pos>           - y-position of window, in pixels or 'top', 'bottom'")
 print("-w <width>         - width of window in pixels")
@@ -1635,8 +1644,8 @@ print("Possible config types are:")
 print()
 print("display            string to be displayed in the bar")
 print("display-string     string to be displayed in the bar")
-print("output             output type, 'dzen2', 'lemonbar', etc")
-print("outtype            output type, 'dzen2', 'lemonbar', etc")
+print("output             output type, 'dzen2', 'lemonbar', 'dwm', etc")
+print("outtype            output type, 'dzen2', 'lemonbar', 'dwm', etc")
 print("xpos               x-position, can be 'left', 'right', 'center' or a pixel-position")
 print("ypos               y-position, can be 'left', 'right', 'center' or a pixel-position")
 print("width              bar width in pixels")
@@ -1967,7 +1976,7 @@ DataSockAdd(settings.datasock)
 Out=OpenOutput(settings)
 poll_streams:add(Out)
 
-if settings.output=="term" 
+if settings.output == "term" 
 then
 	if strutil.strlen(settings.foreground) > 0
 	then
@@ -2000,8 +2009,15 @@ do
 		end_ticks=time.millisecs()
 	
 		update_display=false
+
+		if settings.output == "dwm"
+		then
+		os.execute("xsetroot -name '"..str.."'")
+		else
 		Out:writeln(str)
 		Out:flush()
+		end
+
 		lookup_counter=lookup_counter+1
 	end
 	
