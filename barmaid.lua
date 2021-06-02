@@ -11,7 +11,7 @@ SHELL_OKAY=0
 SHELL_CLOSED=1
 SHELL_CLS=2
 
-version="5.3"
+version="5.4"
 settings={}
 lookup_counter=0
 lookup_values={}
@@ -94,11 +94,11 @@ end
 function GetDisplayVars(str)
 local vars={}
 
-toks=strutil.TOKENIZER(settings.display, "$(|@(|>(|)", "ms")
+toks=strutil.TOKENIZER(settings.display, "$(|^(|@(|>(|)", "ms")
 str=toks:next()
 while str ~= nil
 do
-	if str=="$(" or str=="@(" or str==">(" then table.insert(vars, str..toks:next()..")") end
+	if str=="$(" or str=="@(" or str==">(" or str== "^(" then table.insert(vars, str..toks:next()..")") end
 	str=toks:next()
 end
 
@@ -538,6 +538,8 @@ xpos=TranslateXPos(settings)
 if settings.output=="dzen2"
 then
 	str="cmd:dzen2 -x " .. xpos .. " -w " .. settings.win_width 
+	if strutil.strlen(settings.ypos) > 0 then str=str .. " -y ".. settings.ypos end
+	if strutil.strlen(settings.align) > 0 then str=str .. " -ta " .. settings.align end
 	if strutil.strlen(settings.font) > 0 then str=str .. " -fn '" .. settings.font .. "'" end
 	if strutil.strlen(settings.foreground) > 0 then str=str .. " -fg '" .. settings.foreground .. "'" end
 	if strutil.strlen(settings.background) > 0 then str=str .. " -bg '" .. settings.background .. "'" end
@@ -741,11 +743,11 @@ function LookupPartitionsGetList()
 local toks, str
 local parts={}
 
-toks=strutil.TOKENIZER(settings.display, "$(|:|)", "ms")
+toks=strutil.TOKENIZER(settings.display, "$(|^(|:|)", "ms")
 str=toks:next()
 while str ~= nil
 do
-	if str=="$("
+	if str=="$(" or str=="^("
 	then
 		str=toks:next()
 		if str=="fs"
@@ -1367,11 +1369,11 @@ end
 
 -- go through display string extracting any variables and
 -- substituting them for up-to-date values
-toks=strutil.TOKENIZER(settings.display, "$(|@(|>(|)", "ms")
+toks=strutil.TOKENIZER(settings.display, "$(|^(|@(|>(|)", "ms")
 str=toks:next()
 while str ~= nil
 do
-	if str=="$(" or str=="@(" or str==">("
+	if str=="$(" or str=="^(" or str=="@(" or str==">("
 	then
 		str=toks:next()
 		if display_values[str] ~= nil 
@@ -1403,6 +1405,7 @@ print("-x <pos>           - x-position of window, in pixels or 'left', 'right', 
 print("-y <pos>           - y-position of window, in pixels or 'top', 'bottom'")
 print("-w <width>         - width of window in pixels")
 print("-h <height>        - height of window in pixels")
+print("-align <alignment> - set text alignment, 'left', 'right' or 'center'")
 print("-fn <font name>    - font to use")
 print("-font <font name>  - font to use")
 print("-bg <color>        - background color")
@@ -1421,6 +1424,15 @@ print("-help-config       - explain config files")
 print("-?                 - this help")
 print("-help              - this help")
 print("--help             - this help")
+print()
+print("example format string:")
+print("  $(date) $(time)   mem used: $(mem)%  fs used: $(fs:/)%")
+print("this format string must be enclosed in single quotes (') if passed on the command-line (rather than in config file), or the shell will eat it.")
+print()
+print("Alternatively the form '^(' can be used instead of '$(', allowing double-quotes to be used and shell vars to be passed. e.g.:")
+print("  host: $HOST  ^(date) ^(time)    mem used: ^(mem)%  fs used: ^(fs:/)%")
+print()
+print("use '-help-values' to get a list of values that can be included in the format string, and '-help-colors' for a list of color-codes")
 print()
 os.exit(0)
 end
@@ -1632,7 +1644,7 @@ end
 
 
 function DisplayHelpConfig()
-print("By default barmaid looks for config files in ~/.config/barmaid.conf, ~/.barmaid.conf and /etc/barmaid.conf. The '-c' command-line option allows changing this search path, like so:")
+print("By default barmaid looks for default config files in ~/.config/barmaid.lua/barmaid.conf ~/.config/barmaid.conf, ~/.barmaid.conf and /etc/barmaid.conf. The '-c' command-line option allows changing this search path, like so:")
 print()
 print("  barmaid.lua -c /config/barmaid.conf:~/etc/barmaid.conf:/usr/local/etc/barmaid.conf")
 print()
@@ -1672,7 +1684,7 @@ function SettingsInit()
 
 settings.display="~w$(day_name)~0 $(day) $(month_name) ~y$(time)~0 $(bats:color) fs:$(fs:/:color)%  mem:$(mem:color)% load:$(load_percent:color)% cputemp:$(cpu_temp:color)c ~y$(ip4address:default)~0"
 
-settings.config_files="~/.config/barmaid.conf"
+settings.config_files="~/.config/barmaid.lua/barmaid.conf:~/.config/barmaid.conf"
 settings.config_files=settings.config_files .. ":" .. "~/.barmaid.conf"
 settings.config_files=settings.config_files .. ":/etc/.barmaid.conf"
 settings.modules_dir="/usr/local/lib/barmaid/"
@@ -1685,6 +1697,8 @@ settings.foreground=""
 settings.background=""
 settings.xpos="center"
 settings.ypos=""
+settings.align=""
+--steal lines is lines to take from the terminal when acting as a terminal bar
 settings.steal_lines=0
 settings.datafeeds={}
 settings.onclicks={}
@@ -1720,6 +1734,8 @@ end
 function LoadConfigFile(path)
 local S, str, name, value
 
+if strutil.strlen(path) ==0 then return end
+
 if string.sub(path, 1, 1) == "~"
 then
 path=process.getenv("HOME") .. string.sub(path, 2)
@@ -1754,6 +1770,9 @@ do
 	elseif name=="geometry"
 	then
 		ParseGeometryString(value)
+	elseif name=="align"
+	then
+		settings.align=value
 	elseif name=="font" or name=="fn"
 	then
 		settings.font=value
@@ -1806,17 +1825,25 @@ function ParseCommandLineConfigFiles(args)
 
 for i,str in ipairs(args)
 do
-	if str=="-c" then settings.config_files=args[i+1] end
+	if str=="-c" 
+	then 
+		settings.config_files=args[i+1] 
+		args[i+1]=""
+	end
 end
 
 end
+
+
 
 function ParseCommandLine(args)
 
 for i,str in ipairs(args)
 do
-
-	if str=="-w" then 
+	if str=="-c" then
+		--ignore this as we've already parsed it in 'ParseCommandLineConfigFiles'
+		args[i+1]=""
+	elseif str=="-w" then 
 		settings.win_width=args[i+1]
 		args[i+1]=""
 	elseif str=="-h" then 
@@ -1833,6 +1860,9 @@ do
 		args[i+1]=""
 	elseif str=="-y" then
 		settings.ypos=args[i+1]
+		args[i+1]=""
+	elseif str=="-a" or str=="-align" then
+		settings.align=args[i+1]
 		args[i+1]=""
 	elseif str=="-bg" or str=="-background" then
 		settings.background=args[i+1]

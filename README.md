@@ -15,7 +15,7 @@ USAGE
 ======
 
 ```
-lua barmaid.lua [-t output_type] [-type output_type] [-x xpos] [-y ypos] [-w width] [-h height] [-bg color] [-fg color] [-fn font] [-font font] [-kvfile path] [-sock path] [format string]
+lua barmaid.lua [-t output_type] [-type output_type] [-x xpos] [-y ypos] [-w width] [-h height] [-a align] [-bg color] [-fg color] [-fn font] [-font font] [-kvfile path] [-sock path] [format string]
 ```
 
 online help can be called up with 'lua barmaid.lua -help' 
@@ -23,6 +23,8 @@ online help can be called up with 'lua barmaid.lua -help'
 the `-t` or `-type` option sets the output type, which can be 'dzen2', 'lemonbar', 'dwm', 'xterm', 'terminal' or 'term'. 
 
 The `-x`, `-y`, `-w` and `-h` options set the x and y position of the bar, and its width and height, in pixels. The `-x` position option can also accept 'left', 'right' and 'center' as screen positions. The `-y` option can accept `top` and `bottom`, with the `bottom` argument causing special behavior in terminal mode (see below). None of these work in 'xterm' mode.
+
+The `-a` option sets text alignment, and can be 'left', 'right' or 'center'.
 
 The `-bg` and `-fg` options set the foreground and background colors of the bar, which (accept for terminal mode) is expressed in rrggbb hexadecimal format with or without a leading '#' (if using a '#' you'll have to put the color string in single-quotes or the shell will treat it as a comment). In terminal mode colors are expressed by name, such as 'blue', 'red' etc. Colors are sadly not available in xterm mode.
 
@@ -55,6 +57,13 @@ Finally the `format string` is the string to display. Values within `$()` will b
 	$(time) $(hostname) $(fs:/) $(date)
 ```
 
+As the '$' symbol means something to the shell, the format string will have to be supplied within single quotes if passed on the command line. Alternatively the format '^(' can be used instead of '$(', like so:
+
+```
+	^(time) ^(hostname) ^(fs:/) ^(date)
+```
+
+
 Colors within this format string can be set using libUseful `~` notation, where the next character is the color prefix. Available colors are:
 
 ```
@@ -76,7 +85,7 @@ The uppercase version of these sets the background instead of the foreground col
 So, for example:
 
 ```
-		~bdisk:~0 $(fs:/)  ~bmem:~0 $(mem)
+	~bdisk:~0 $(fs:/)  ~bmem:~0 $(mem)
 ```
 
 Will display the words 'disk:' and 'mem:' in blue, in front of the values for root-partition usage and memory usage, which will be in the default color.
@@ -241,7 +250,7 @@ An example 'reformat' module is also provided in the distribution.
 CONFIG FILE
 ===========
 
-By default barmaid looks for config files in `~/.config/barmaid.conf`, `~/.barmaid.conf` and `/etc/barmaid.conf`. The '-c' command-line option allows changing this search path, like so:
+By default barmaid looks for config files in `~/.config/barmaid.lua/barmaid.conf`, `~/.config/barmaid.conf`, `~/.barmaid.conf` and `/etc/barmaid.conf`. The '-c' command-line option allows changing this search path, like so:
 
 ```
   barmaid.lua -c /config/barmaid.conf:~/etc/barmaid.conf:/usr/local/etc/barmaid.conf
@@ -261,6 +270,7 @@ xpos               x-position, can be 'left', 'right', 'center' or a pixel-posit
 ypos               y-position, can be 'left', 'right', 'center' or a pixel-position
 width              bar width in pixels
 height             bar height in pixels
+align              text alignment, can be 'left', 'right' or 'center'
 font               name of font to use in the bar
 fn                 name of font to use in the bar
 foreground         default foreground color
