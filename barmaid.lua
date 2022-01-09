@@ -25,18 +25,18 @@ stdio=nil
 datasock=nil
 
 usage_color_map={
-				{value=0, color="~g"},
-				{value=25, color="~y"},
-				{value=75, color="~r"},
-				{value=90, color="~R"}
+        {value=0, color="~g"},
+        {value=25, color="~y"},
+        {value=75, color="~r"},
+        {value=90, color="~R"}
 }
 
 thermal_color_map={
-				{value=0, color="~c"},
-				{value=20, color="~g"},
-				{value=40, color="~y"},
-				{value=60, color="~r"},
-				{value=80, color="~R"}
+        {value=0, color="~c"},
+        {value=20, color="~g"},
+        {value=40, color="~y"},
+        {value=60, color="~r"},
+        {value=80, color="~R"}
 }
 
 
@@ -47,7 +47,7 @@ local color=""
 
 for i,thresh in ipairs(thresholds)
 do
-	if value > thresh.value then color=thresh.color end
+  if value > thresh.value then color=thresh.color end
 end
 
 return color
@@ -57,18 +57,18 @@ end
 function AddDisplayValue(name, value, fmtstr, colormap)
 local valstr
 
-	if fmtstr ~= nil 
-	then 
-	valstr=string.format(fmtstr, value) 
-	else
-	valstr=value
-	end
+  if fmtstr ~= nil 
+  then 
+  valstr=string.format(fmtstr, value) 
+  else
+  valstr=value
+  end
 
-	display_values[name]=valstr
-	if colormap ~= nil
-	then
-		display_values[name..":color"]=AutoColorValue(value, colormap)..valstr.."~0"
-	end
+  display_values[name]=valstr
+  if colormap ~= nil
+  then
+    display_values[name..":color"]=AutoColorValue(value, colormap)..valstr.."~0"
+  end
 
 end
 
@@ -98,8 +98,8 @@ toks=strutil.TOKENIZER(settings.display, "$(|^(|@(|>(|)", "ms")
 str=toks:next()
 while str ~= nil
 do
-	if str=="$(" or str=="@(" or str==">(" or str== "^(" then table.insert(vars, str..toks:next()..")") end
-	str=toks:next()
+  if str=="$(" or str=="@(" or str==">(" or str== "^(" then table.insert(vars, str..toks:next()..")") end
+  str=toks:next()
 end
 
 return vars
@@ -115,10 +115,10 @@ S=stream.STREAM("cmd:xwininfo -root")
 line=S:readln()
 while line ~= nil
 do
-	line=strutil.stripLeadingWhitespace(line)
-	line=strutil.stripTrailingWhitespace(line)
-	if string.sub(line, 1, 10) == "-geometry " then geom=string.sub(line, 11) end
-	line=S:readln()
+  line=strutil.stripLeadingWhitespace(line)
+  line=strutil.stripTrailingWhitespace(line)
+  if string.sub(line, 1, 10) == "-geometry " then geom=string.sub(line, 11) end
+  line=S:readln()
 end
 S:close()
 
@@ -141,7 +141,7 @@ str=S:readln()
 str=strutil.stripTrailingWhitespace(str)
 S:close()
 else
-	print("error: can't open: "..path)
+  print("error: can't open: "..path)
 end
 
 return(str)
@@ -158,8 +158,8 @@ if settings.xpos=="center"    then pos=(root_width / 2) - (settings.win_width / 
 elseif settings.xpos=="right" then pos=root_width - settings.win_width
 elseif settings.xpos=="left"  then pos=0
 else 
-	pos=tonumber(settings.xpos) 
-	if pos < 0 then pos=root_width - settings.win_width - pos end
+  pos=tonumber(settings.xpos) 
+  if pos < 0 then pos=root_width - settings.win_width - pos end
 end
 
 return math.floor(pos)
@@ -216,7 +216,7 @@ if item ~= nil then return item end
 
 for pattern,item in pairs (self.by_pattern)
 do
-	if strutil.pmatch(pattern, str) == true then return item end
+  if strutil.pmatch(pattern, str) == true then return item end
 end
 
 return nil
@@ -232,7 +232,7 @@ value=ivalue
 -- a string into another before it's displayed
 for i,item in ipairs(display_modules)
 do
-	if item.process ~= nil then value=item.process(value_name, value) end
+  if item.process ~= nil then value=item.process(value_name, value) end
 end
 
 -- 'value' is now either a copy of the original passed-in ivalue or
@@ -253,9 +253,9 @@ translations.add=function(self, pattern, value)
 
 if string.find(pattern, "[*+?%[%]]") ~= nil
 then
-	self.by_pattern[pattern]=value
+  self.by_pattern[pattern]=value
 else
-	self.by_name[pattern]=value
+  self.by_name[pattern]=value
 end
 
 end
@@ -271,7 +271,7 @@ toks=strutil.TOKENIZER(def, "|")
 str=toks:next()
 if str ~= nil 
 then 
-	self:add(str, toks:remaining())
+  self:add(str, toks:remaining())
 end
 
 end
@@ -290,49 +290,49 @@ local onclick_counter=1, item
 len=strutil.strlen(str)
 while i <= len
 do
-	char=string.sub(str, i, i)
-	if char=="~" 
-	then 
-		i=i+1
-		char=string.sub(str, i, i)		
-		if char=="r" then outstr=outstr.."^fg(red)"
-		elseif char=="y" then outstr=outstr.."^fg(yellow)"
-		elseif char=="g" then outstr=outstr.."^fg(green)"
-		elseif char=="m" then outstr=outstr.."^fg(magenta)"
-		elseif char=="b" then outstr=outstr.."^fg(blue)"
-		elseif char=="c" then outstr=outstr.."^fg(cyan)"
-		elseif char=="w" then outstr=outstr.."^fg(white)"
-		elseif char=="R" then outstr=outstr.."^bg(red)"
-		elseif char=="Y" then outstr=outstr.."^bg(yellow)"
-		elseif char=="G" then outstr=outstr.."^bg(green)"
-		elseif char=="M" then outstr=outstr.."^bg(magenta)"
-		elseif char=="B" then outstr=outstr.."^bg(blue)"
-		elseif char=="C" then outstr=outstr.."^bg(cyan)"
-		elseif char=="W" then outstr=outstr.."^bg(white)"
-		elseif char=="~" then outstr=outstr.."~"
-		elseif char=="i"
-		then
-			i,item=TranslateClipImagePath(str, i)
-			item=ConvertImageToXPM(item)
-			outstr=outstr.."^i("..item..")"
-		elseif char=="{"
-		then
-			item=settings.onclicks[onclick_counter]
-			if item ~= nil
-			then
-			outstr=outstr.."^ca(1," .. item .. ")"
-			onclick_counter=onclick_counter+1
-			end
-		elseif char=="}"
-		then 
-			outstr=outstr.."^ca()" 
-		elseif char=="0" then outstr=outstr.."^fg()^bg()"
-		else outstr=outstr.."~"..char
-		end
-	else outstr=outstr..char
-	end
+  char=string.sub(str, i, i)
+  if char=="~" 
+  then 
+    i=i+1
+    char=string.sub(str, i, i)    
+    if char=="r" then outstr=outstr.."^fg(red)"
+    elseif char=="y" then outstr=outstr.."^fg(yellow)"
+    elseif char=="g" then outstr=outstr.."^fg(green)"
+    elseif char=="m" then outstr=outstr.."^fg(magenta)"
+    elseif char=="b" then outstr=outstr.."^fg(blue)"
+    elseif char=="c" then outstr=outstr.."^fg(cyan)"
+    elseif char=="w" then outstr=outstr.."^fg(white)"
+    elseif char=="R" then outstr=outstr.."^bg(red)"
+    elseif char=="Y" then outstr=outstr.."^bg(yellow)"
+    elseif char=="G" then outstr=outstr.."^bg(green)"
+    elseif char=="M" then outstr=outstr.."^bg(magenta)"
+    elseif char=="B" then outstr=outstr.."^bg(blue)"
+    elseif char=="C" then outstr=outstr.."^bg(cyan)"
+    elseif char=="W" then outstr=outstr.."^bg(white)"
+    elseif char=="~" then outstr=outstr.."~"
+    elseif char=="i"
+    then
+      i,item=TranslateClipImagePath(str, i)
+      item=ConvertImageToXPM(item)
+      outstr=outstr.."^i("..item..")"
+    elseif char=="{"
+    then
+      item=settings.onclicks[onclick_counter]
+      if item ~= nil
+      then
+      outstr=outstr.."^ca(1," .. item .. ")"
+      onclick_counter=onclick_counter+1
+      end
+    elseif char=="}"
+    then 
+      outstr=outstr.."^ca()" 
+    elseif char=="0" then outstr=outstr.."^fg()^bg()"
+    else outstr=outstr.."~"..char
+    end
+  else outstr=outstr..char
+  end
 
-	i=i+1
+  i=i+1
 end
 
 return(outstr)
@@ -350,49 +350,49 @@ outstr="%{c}"
 len=strutil.strlen(str)
 while i <= len
 do
-	char=string.sub(str, i, i)
-	if char=="~" 
-	then 
-		i=i+1
-		char=string.sub(str, i, i)		
-		if char=="r" then outstr=outstr.."%{F#ff0000}"
-		elseif char=="y" then outstr=outstr.."%{F#ffff00}"
-		elseif char=="g" then outstr=outstr.."%{F#00ff00}"
-		elseif char=="m" then outstr=outstr.."%{F#ff00ff}"
-		elseif char=="b" then outstr=outstr.."%{F#0000ff}"
-		elseif char=="c" then outstr=outstr.."%{F#00ffff}"
-		elseif char=="w" then outstr=outstr.."%{F#ffffff}"
-		elseif char=="R" then outstr=outstr.."%{B#ff0000}"
-		elseif char=="Y" then outstr=outstr.."%{B#ffff00}"
-		elseif char=="G" then outstr=outstr.."%{B#00ff00}"
-		elseif char=="M" then outstr=outstr.."%{B#ff00ff}"
-		elseif char=="B" then outstr=outstr.."%{B#0000ff}"
-		elseif char=="C" then outstr=outstr.."%{B#00ffff}"
-		elseif char=="W" then outstr=outstr.."%{B#ffffff}"
-		elseif char=="~" then outstr=outstr.."~"
-		elseif char=="0" then outstr=outstr.."%{F-}%{B-}"
-		elseif char=="i"
-		then
-			i,item=TranslateClipImagePath(str, i)
-		--	io.stderr:write("images not supported in lemonbar. ignoring ".. item .."\n")
-		elseif char=="{"
-		then
-			item=settings.onclicks[onclick_counter]
-			if item ~= nil
-			then
-			outstr=outstr.."%{A:" .. string.format("click=%d", onclick_counter) .. ":}"
-			onclick_counter=onclick_counter+1
-			end
-		elseif char=="}"
-		then 
-			outstr=outstr.."%{A}" 
-		else outstr=outstr..char
-		end
-	elseif char=="%" then outstr=outstr.."%%"
-	else outstr=outstr..char
-	end
+  char=string.sub(str, i, i)
+  if char=="~" 
+  then 
+    i=i+1
+    char=string.sub(str, i, i)    
+    if char=="r" then outstr=outstr.."%{F#ff0000}"
+    elseif char=="y" then outstr=outstr.."%{F#ffff00}"
+    elseif char=="g" then outstr=outstr.."%{F#00ff00}"
+    elseif char=="m" then outstr=outstr.."%{F#ff00ff}"
+    elseif char=="b" then outstr=outstr.."%{F#0000ff}"
+    elseif char=="c" then outstr=outstr.."%{F#00ffff}"
+    elseif char=="w" then outstr=outstr.."%{F#ffffff}"
+    elseif char=="R" then outstr=outstr.."%{B#ff0000}"
+    elseif char=="Y" then outstr=outstr.."%{B#ffff00}"
+    elseif char=="G" then outstr=outstr.."%{B#00ff00}"
+    elseif char=="M" then outstr=outstr.."%{B#ff00ff}"
+    elseif char=="B" then outstr=outstr.."%{B#0000ff}"
+    elseif char=="C" then outstr=outstr.."%{B#00ffff}"
+    elseif char=="W" then outstr=outstr.."%{B#ffffff}"
+    elseif char=="~" then outstr=outstr.."~"
+    elseif char=="0" then outstr=outstr.."%{F-}%{B-}"
+    elseif char=="i"
+    then
+      i,item=TranslateClipImagePath(str, i)
+    --  io.stderr:write("images not supported in lemonbar. ignoring ".. item .."\n")
+    elseif char=="{"
+    then
+      item=settings.onclicks[onclick_counter]
+      if item ~= nil
+      then
+      outstr=outstr.."%{A:" .. string.format("click=%d", onclick_counter) .. ":}"
+      onclick_counter=onclick_counter+1
+      end
+    elseif char=="}"
+    then 
+      outstr=outstr.."%{A}" 
+    else outstr=outstr..char
+    end
+  elseif char=="%" then outstr=outstr.."%%"
+  else outstr=outstr..char
+  end
 
-	i=i+1
+  i=i+1
 end
 
 return(outstr)
@@ -409,17 +409,17 @@ local outstr=""
 len=strutil.strlen(str)
 while i <= len
 do
-	char=string.sub(str, i, i)
-	if char=="~" 
-	then 
-		i=i+1
-		char=string.sub(str, i, i)		
-		if char=="~" then outstr=outstr.."~" end
+  char=string.sub(str, i, i)
+  if char=="~" 
+  then 
+    i=i+1
+    char=string.sub(str, i, i)    
+    if char=="~" then outstr=outstr.."~" end
 
-	else outstr=outstr..char
-	end
+  else outstr=outstr..char
+  end
 
-	i=i+1
+  i=i+1
 end
 
 return(outstr)
@@ -441,7 +441,7 @@ if strutil.strlen(settings.term_foreground) > 0 then input=settings.term_foregro
 str="\r" .. input .. "~>~0"
 if settings.ypos=="bottom" 
 then 
-	str=string.format("\x1b[s\x1b[%d;0H%s\x1b[u", term:length(), str)
+  str=string.format("\x1b[s\x1b[%d;0H%s\x1b[u", term:length(), str)
 end
 return(terminal.format(str))
 end
@@ -450,23 +450,23 @@ end
 function TranslateColorStrings(settings, input)
 local str
 
-	if settings.output=="dzen2"
-	then
-		return(DZenTranslateColorStrings(input).."\n")
-	elseif settings.output=="lemonbar"
-	then
-		return(LemonbarTranslateColorStrings(input).."\n")
-	elseif settings.output=="xterm"
-	then
-		return(XtermTitleTranslateOutput(input))
-	elseif settings.output=="dwm"
-	then
-		return(MonochromeTranslateOutput(input))
-	else
-		return(TerminalTranslateOutput(settings, input))
-	end
+  if settings.output=="dzen2"
+  then
+    return(DZenTranslateColorStrings(input).."\n")
+  elseif settings.output=="lemonbar"
+  then
+    return(LemonbarTranslateColorStrings(input).."\n")
+  elseif settings.output=="xterm"
+  then
+    return(XtermTitleTranslateOutput(input))
+  elseif settings.output=="dwm"
+  then
+    return(MonochromeTranslateOutput(input))
+  else
+    return(TerminalTranslateOutput(settings, input))
+  end
 
-	return input
+  return input
 end
 
 
@@ -476,10 +476,10 @@ function CheckForOutputProgram(program)
 path=filesys.find(program, process.getenv("PATH"))
 if strutil.strlen(path) > 0 
 then 
-	settings.output=program
-	return true
+  settings.output=program
+  return true
 else
-	return false
+  return false
 end
 
 end
@@ -488,18 +488,18 @@ end
 function SelectOutput(settings)
 local str, path
 
-	if settings.output=="default"
-	then
-		settings.output="term"
-		str=process.getenv("DISPLAY")
-		if strutil.strlen(str) > 0
-		then
-			if CheckForOutputProgram("dzen2") ~= true
-			then
-				CheckForOutputProgram("lemonbar")
-			end
-		end
-	end
+  if settings.output=="default"
+  then
+    settings.output="term"
+    str=process.getenv("DISPLAY")
+    if strutil.strlen(str) > 0
+    then
+      if CheckForOutputProgram("dzen2") ~= true
+      then
+        CheckForOutputProgram("lemonbar")
+      end
+    end
+  end
 
 end
 
@@ -514,19 +514,19 @@ function WrapTerminal(steal_lines)
 -- we access them on events
 
   stdio=stream.STREAM("-")
-	shell=stream.STREAM("cmd:/bin/sh", "pty echo")
-	term=terminal.TERM(stdio)
-	if (steal_lines > 0)
-	then	
-		term:scrollingregion(0, term:length() -1)
-		term:clear()
-	end
+  shell=stream.STREAM("cmd:/bin/sh", "pty echo")
+  term=terminal.TERM(stdio)
+  if (steal_lines > 0)
+  then  
+    term:scrollingregion(0, term:length() -1)
+    term:clear()
+  end
 
-	shell:ptysize(term:width(), term:length() - steal_lines)
-	shell:timeout(10)
-	poll_streams:add(shell)
-	poll_streams:add(stdio)
-	return stdio
+  shell:ptysize(term:width(), term:length() - steal_lines)
+  shell:timeout(10)
+  poll_streams:add(shell)
+  poll_streams:add(stdio)
+  return stdio
 end
 
 
@@ -537,31 +537,31 @@ local str=""
 xpos=TranslateXPos(settings) 
 if settings.output=="dzen2"
 then
-	str="cmd:dzen2 -x " .. xpos .. " -w " .. settings.win_width 
-	if strutil.strlen(settings.ypos) > 0 then str=str .. " -y ".. settings.ypos end
-	if strutil.strlen(settings.align) > 0 then str=str .. " -ta " .. settings.align end
-	if strutil.strlen(settings.font) > 0 then str=str .. " -fn '" .. settings.font .. "'" end
-	if strutil.strlen(settings.foreground) > 0 then str=str .. " -fg '" .. settings.foreground .. "'" end
-	if strutil.strlen(settings.background) > 0 then str=str .. " -bg '" .. settings.background .. "'" end
-	S=stream.STREAM(str)
+  str="cmd:dzen2 -x " .. xpos .. " -w " .. settings.win_width 
+  if strutil.strlen(settings.ypos) > 0 then str=str .. " -y ".. settings.ypos end
+  if strutil.strlen(settings.align) > 0 then str=str .. " -ta " .. settings.align end
+  if strutil.strlen(settings.font) > 0 then str=str .. " -fn '" .. settings.font .. "'" end
+  if strutil.strlen(settings.foreground) > 0 then str=str .. " -fg '" .. settings.foreground .. "'" end
+  if strutil.strlen(settings.background) > 0 then str=str .. " -bg '" .. settings.background .. "'" end
+  S=stream.STREAM(str)
 elseif settings.output=="lemonbar"
 then
-	str="cmd:lemonbar -g " .. settings.win_width .. "x"..settings.win_height.."+"..xpos.."+0"
-	if strutil.strlen(settings.font) > 0 then str=str .. " -f '" .. settings.font .. "'" end
-	if strutil.strlen(settings.foreground) > 0 then str=str .. " -F '" .. settings.foreground .. "'" end
-	if strutil.strlen(settings.background) > 0 then str=str .. " -B '" .. settings.background .. "'" end
-	S=stream.STREAM(str)
+  str="cmd:lemonbar -g " .. settings.win_width .. "x"..settings.win_height.."+"..xpos.."+0"
+  if strutil.strlen(settings.font) > 0 then str=str .. " -f '" .. settings.font .. "'" end
+  if strutil.strlen(settings.foreground) > 0 then str=str .. " -F '" .. settings.foreground .. "'" end
+  if strutil.strlen(settings.background) > 0 then str=str .. " -B '" .. settings.background .. "'" end
+  S=stream.STREAM(str)
 elseif settings.output=="xterm" -- put bar in xterm title by wrapping terminal
 then
-	S=WrapTerminal(settings.steal_lines)
+  S=WrapTerminal(settings.steal_lines)
 else 
-	if settings.ypos=="bottom" --put bar at bottom of screen, wrap terminal
-	then
-		-- for some reason we have to steal two lines for this to work at all
-		S=WrapTerminal(settings.steal_lines)
-	else
-		S=stream.STREAM("-")
-	end
+  if settings.ypos=="bottom" --put bar at bottom of screen, wrap terminal
+  then
+    -- for some reason we have to steal two lines for this to work at all
+    S=WrapTerminal(settings.steal_lines)
+  else
+    S=stream.STREAM("-")
+  end
 end
 
 return S
@@ -569,16 +569,16 @@ end
 
 
 function LookupTimes()
-	display_values.time=time.format("%H:%M:%S")
-	display_values.date=time.format("%Y/%m/%d")
-	display_values.day_name=time.format("%a")
-	display_values.month_name=time.format("%b")
-	display_values.hour=time.format("%H")
-	display_values.minutes=time.format("%M")
-	display_values.seconds=time.format("%S")
-	display_values.year=time.format("%Y")
-	display_values.month=time.format("%m")
-	display_values.day=time.format("%d")
+  display_values.time=time.format("%H:%M:%S")
+  display_values.date=time.format("%Y/%m/%d")
+  display_values.day_name=time.format("%a")
+  display_values.month_name=time.format("%b")
+  display_values.hour=time.format("%H")
+  display_values.minutes=time.format("%M")
+  display_values.seconds=time.format("%S")
+  display_values.year=time.format("%Y")
+  display_values.month=time.format("%m")
+  display_values.day=time.format("%d")
 end
 
 
@@ -612,15 +612,15 @@ Glob=filesys.GLOB("/sys/class/power_supply/*")
 str=Glob:next()
 while str ~= nil 
 do
-	name=filesys.basename(str)
-	if 
-	filesys.exists(str.."/charge_full") ==true or
-	filesys.exists(str.."/energy_full") ==true
-	then
-		bat=GetBattery(name, str)
-		table.insert(bats, bat)
-	end
-	str=Glob:next()
+  name=filesys.basename(str)
+  if 
+  filesys.exists(str.."/charge_full") ==true or
+  filesys.exists(str.."/energy_full") ==true
+  then
+    bat=GetBattery(name, str)
+    table.insert(bats, bat)
+  end
+  str=Glob:next()
 end
 
 return bats
@@ -632,10 +632,10 @@ local bats, i, bat, perc
 local bats_str=""
 local bats_str_color=""
 local color_map={
-				{value=0, color="~R"},
-				{value=10, color="~r"},
-				{value=25, color="~y"},
-				{value=75, color="~g"}
+        {value=0, color="~R"},
+        {value=10, color="~r"},
+        {value=25, color="~y"},
+        {value=75, color="~g"}
 }
 
 display_values["bats"]=""
@@ -643,27 +643,31 @@ bats=GetBatteries()
 
 for i,bat in ipairs(bats)
 do
-	name="bat:"..tostring(i-1)
-	if bat.max > 0
-	then
-	perc=math.floor((bat.charge * 100 / bat.max) + 0.5)
-	else
-	perc=0
-	end
+  name="bat:"..tostring(i-1)
+  -- sometimes this is nil, maybe because we've failed to open the file
+  if bat.charge ~= nil
+  then
+    if bat.max > 0
+    then
+    perc=math.floor((bat.charge * 100 / bat.max) + 0.5)
+    else
+    perc=0
+  end
 
-	AddDisplayValue(name, perc, "%d", color_map)
-	if bat.status == "Charging" then display_values["charging:"..i]="~~" end
+  AddDisplayValue(name, perc, "%d", color_map)
+  if bat.status == "Charging" then display_values["charging:"..i]="~~" end
 
-	bats_str=bats_str .. name..":"..display_values[name].."%"
-	bats_str_color=bats_str_color .. name..":"..display_values[name..":color"].."%"
-	if bat.status == "Charging" 
-	then
-		bats_str=bats_str.."~"
-		bats_str_color=bats_str_color.."~"
-	else
-		bats_str=bats_str.." "
-		bats_str_color=bats_str_color.." "
-	end
+  bats_str=bats_str .. name..":"..display_values[name].."%"
+  bats_str_color=bats_str_color .. name..":"..display_values[name..":color"].."%"
+  if bat.status == "Charging" 
+  then
+    bats_str=bats_str.."~"
+    bats_str_color=bats_str_color.."~"
+  else
+    bats_str=bats_str.." "
+    bats_str_color=bats_str_color.." "
+  end
+  end
 end
 
 display_values["bats"]=bats_str
@@ -679,14 +683,14 @@ Glob=filesys.GLOB("/sys/class/thermal/thermal_zone*")
 path=Glob:next()
 while path ~= nil 
 do
-	str=SysReadFile(path.."/type")
-	if str == "x86_pkg_temp"
-	then
-		str=SysReadFile(path.."/temp")
-		val=tonumber(str) / 1000.0
-		AddDisplayValue("cpu_temp", val, "% 3.1f", thermal_color_map)
-	end
-	path=Glob:next()
+  str=SysReadFile(path.."/type")
+  if str == "x86_pkg_temp"
+  then
+    str=SysReadFile(path.."/temp")
+    val=tonumber(str) / 1000.0
+    AddDisplayValue("cpu_temp", val, "% 3.1f", thermal_color_map)
+  end
+  path=Glob:next()
 end
 
 end
@@ -700,14 +704,14 @@ Glob=filesys.GLOB(dir.. "/temp*input")
 path=Glob:next()
 while path ~= nil 
 do
-	str=SysReadFile(path)
-	val=tonumber(str) / 1000
-	if val > temp then temp=val end
-	path=Glob:next()
+  str=SysReadFile(path)
+  val=tonumber(str) / 1000
+  if val > temp then temp=val end
+  path=Glob:next()
 end
 
 return temp
-end	
+end  
 
 
 function LookupHWmon()
@@ -717,16 +721,16 @@ Glob=filesys.GLOB("/sys/class/hwmon/*")
 path=Glob:next()
 while path ~= nil 
 do
-	if filesys.exists(path.."/name") == true
-	then
-	str=SysReadFile(path.."/name")
-	if str == "coretemp"
-	then
-		AddDisplayValue("cpu_temp", LookupCoreTemp(path), nil, thermal_color_map)
-	end
-	end
+  if filesys.exists(path.."/name") == true
+  then
+  str=SysReadFile(path.."/name")
+  if str == "coretemp"
+  then
+    AddDisplayValue("cpu_temp", LookupCoreTemp(path), nil, thermal_color_map)
+  end
+  end
 
-	path=Glob:next()
+  path=Glob:next()
 end
 
 end
@@ -747,22 +751,22 @@ toks=strutil.TOKENIZER(settings.display, "$(|^(|:|)", "ms")
 str=toks:next()
 while str ~= nil
 do
-	if str=="$(" or str=="^("
-	then
-		str=toks:next()
-		if str=="fs"
-		then
-		str=toks:next() --consume the ':'
-		str=toks:next()
-		parts[str]="y"
-		end
-	end
-	str=toks:next()
+  if str=="$(" or str=="^("
+  then
+    str=toks:next()
+    if str=="fs"
+    then
+    str=toks:next() --consume the ':'
+    str=toks:next()
+    parts[str]="y"
+    end
+  end
+  str=toks:next()
 end
 
 return parts
 end
-	
+  
 
 function LookupPartitions()
 local str, perc, color, toks
@@ -775,23 +779,23 @@ S=stream.STREAM("/proc/self/mounts", "r")
 if S ~= nil
 then
 
-	str=S:readln()
-	while str ~= nil
-	do
-		toks=strutil.TOKENIZER(str, "\\S")
-		fs_type=toks:next()
-		fs_mount=toks:next()
+  str=S:readln()
+  while str ~= nil
+  do
+    toks=strutil.TOKENIZER(str, "\\S")
+    fs_type=toks:next()
+    fs_mount=toks:next()
 
-		if fs_type ~= "none" and fs_type ~="cgroups" and requested_partitions[fs_mount] ~= nil
-		then
-			perc=math.floor( (filesys.fs_used(fs_mount) * 100 / filesys.fs_size(fs_mount)) + 0.5)
-			AddDisplayValue("fs:"..fs_mount, perc, nil, usage_color_map)
-		end
+    if fs_type ~= "none" and fs_type ~="cgroups" and requested_partitions[fs_mount] ~= nil
+    then
+      perc=math.floor( (filesys.fs_used(fs_mount) * 100 / filesys.fs_size(fs_mount)) + 0.5)
+      AddDisplayValue("fs:"..fs_mount, perc, nil, usage_color_map)
+    end
 
-	str=S:readln()
-	end
+  str=S:readln()
+  end
 
-	S:close()
+  S:close()
 end
 
 
@@ -808,24 +812,24 @@ local mem_perc
 S=stream.STREAM("/proc/meminfo", "r");
 if S~= nil
 then
-	str=S:readln()
-	while str ~= nil
-	do
-	toks=strutil.TOKENIZER(str, ":")
-	name=toks:next()
-	value=strutil.trim(toks:next())
+  str=S:readln()
+  while str ~= nil
+  do
+  toks=strutil.TOKENIZER(str, ":")
+  name=toks:next()
+  value=strutil.trim(toks:next())
 
-	toks=strutil.TOKENIZER(value, "\\S")
-	value=toks:next()
-	if name=="MemTotal" then totalmem=tonumber(value) end
-	if name=="MemAvailable" then availmem=tonumber(value) end
-	if name=="Cached" then cachedmem=tonumber(value) end
-	str=S:readln()
-	end
-	S:close()
+  toks=strutil.TOKENIZER(value, "\\S")
+  value=toks:next()
+  if name=="MemTotal" then totalmem=tonumber(value) end
+  if name=="MemAvailable" then availmem=tonumber(value) end
+  if name=="Cached" then cachedmem=tonumber(value) end
+  str=S:readln()
+  end
+  S:close()
 else
-	availmem=sys.freemem() + sys.buffermem()
-	totalmem=sys.totalmem()
+  availmem=sys.freemem() + sys.buffermem()
+  totalmem=sys.totalmem()
 end
 
 display_values["usedmem"]=strutil.toMetric(totalmem-availmem)
@@ -853,9 +857,9 @@ display_values["totalswap"]=strutil.toMetric(totalmem)
 
 if totalmem > 0 
 then
-	mem_perc=100.0 - (availmem * 100 / totalmem)
+  mem_perc=100.0 - (availmem * 100 / totalmem)
 else
-	mem_perc=0
+  mem_perc=0
 end
 
 AddDisplayValue("swap", mem_perc, "% 3.1f", usage_color_map)
@@ -872,13 +876,13 @@ local cpu_count=0
 S=stream.STREAM("/proc/cpuinfo", "r")
 if S ~= nil
 then
-	str=S:readln()
-	while str ~= nil
-	do
-		if string.sub(str, 1, 9)=="processor" then cpu_count=cpu_count+1 end
-		str=S:readln()
-	end
-	S:close()
+  str=S:readln()
+  while str ~= nil
+  do
+    if string.sub(str, 1, 9)=="processor" then cpu_count=cpu_count+1 end
+    str=S:readln()
+  end
+  S:close()
 end
 
 display_values["cpu_count"]=cpu_count
@@ -897,16 +901,16 @@ item=toks:next()
 while item ~= nil
 do
       val=tonumber(item)
-			if val ~= nil
-			then
-			-- add up user/system/kernel etc, INCLUDING IDLE, to give 'total'
+      if val ~= nil
+      then
+      -- add up user/system/kernel etc, INCLUDING IDLE, to give 'total'
       total=total + val
 
-			-- 3rd item along is 'idle'
+      -- 3rd item along is 'idle'
       if count==3 then idle=val end
 
       count=count+1
-			end
+      end
 
       item=toks:next()
 end
@@ -932,31 +936,31 @@ then
     key=toks:next()
     if key=="cpu"
     then
-    	key=toks:next()
-			used,total=ReadCpuUsageLine(toks)
+      key=toks:next()
+      used,total=ReadCpuUsageLine(toks)
     elseif string.match(key, "^cpu[0-9]") ~= nil
-		then
-			cpu_count=cpu_count+1
+    then
+      cpu_count=cpu_count+1
     end
     str=S:readln()
   end
   S:close()
 
-	display_values["cpu_count"]=cpu_count
-	if display_values["cpu_last_used"] ~= nil
-	then
-	val=(used - tonumber(display_values["cpu_last_used"])) / (total - display_values["cpu_last_total"])
-	AddDisplayValue("load", val * cpu_count, "%3.1f", nil)
-	AddDisplayValue("load_percent", val * 100.0, "% 3.1f", usage_color_map)
-	else
-	display_values["load"]="---"
-	display_values["load_percent"]="---"
-	end
+  display_values["cpu_count"]=cpu_count
+  if display_values["cpu_last_used"] ~= nil
+  then
+  val=(used - tonumber(display_values["cpu_last_used"])) / (total - display_values["cpu_last_total"])
+  AddDisplayValue("load", val * cpu_count, "%3.1f", nil)
+  AddDisplayValue("load_percent", val * 100.0, "% 3.1f", usage_color_map)
+  else
+  display_values["load"]="---"
+  display_values["load_percent"]="---"
+  end
 
-	display_values["cpu_last_used"]=used
-	display_values["cpu_last_total"]=total
+  display_values["cpu_last_used"]=used
+  display_values["cpu_last_total"]=total
 else
-	print("FAIL TO OPEN /proc/stat")
+  print("FAIL TO OPEN /proc/stat")
 end
 
 end
@@ -988,12 +992,12 @@ display_values["os"]=sys.type()
 val=sys.uptime()
 if val / (3600 * 365) > 1
 then
-	display_values["uptime"]=time.formatsecs("%y years %j days %H:%M:%S", val, "GMT")
+  display_values["uptime"]=time.formatsecs("%y years %j days %H:%M:%S", val, "GMT")
 elseif val / (3600 * 24) > 1
 then
-	display_values["uptime"]=time.formatsecs("%j days %H:%M:%S", val, "GMT")
+  display_values["uptime"]=time.formatsecs("%j days %H:%M:%S", val, "GMT")
 else
-	display_values["uptime"]=time.formatsecs("%H:%M:%S", val, "GMT")
+  display_values["uptime"]=time.formatsecs("%H:%M:%S", val, "GMT")
 end
 
 LookupMemInfo();
@@ -1025,8 +1029,8 @@ then
     iface,dest=LookupDefaultRouteIfaceParse(str) 
     if dest == "00000000" 
     then 
-	S:close()
-	return iface 
+  S:close()
+  return iface 
     end
     str=S:readln()
   end
@@ -1048,17 +1052,17 @@ do
 
 if strutil.strlen(sys.ip4address(iface)) > 0
 then
-	display_values["ip4address:"..iface]=sys.ip4address(iface)
-	display_values["ip4netmask:"..iface]=sys.ip4netmask(iface)
-	display_values["ip4broadcast:"..iface]=sys.ip4broadcast(iface)
+  display_values["ip4address:"..iface]=sys.ip4address(iface)
+  display_values["ip4netmask:"..iface]=sys.ip4netmask(iface)
+  display_values["ip4broadcast:"..iface]=sys.ip4broadcast(iface)
 
-	if iface == default_iface
-	then
-	display_values["ip4interface:default"]=iface
-	display_values["ip4address:default"]=sys.ip4address(iface)
-	display_values["ip4netmask:default"]=sys.ip4netmask(iface)
-	display_values["ip4broadcast:default"]=sys.ip4broadcast(iface)
-	end
+  if iface == default_iface
+  then
+  display_values["ip4interface:default"]=iface
+  display_values["ip4address:default"]=sys.ip4address(iface)
+  display_values["ip4netmask:default"]=sys.ip4netmask(iface)
+  display_values["ip4broadcast:default"]=sys.ip4broadcast(iface)
+  end
 end
 
 iface=toks:next()
@@ -1072,17 +1076,17 @@ local i, url, toks, S
 
 if lookup_counter % 30 == 0 and lookup_values.ServicesUp ~= nil
 then
-	for i,url in ipairs(lookup_values.ServicesUp)
-	do
-		S=stream.STREAM("tcp:" .. url, "r timeout=20")
-		if S ~= nil 
-		then
-		display_values["up:"..url]="up"
-		S:close()
-		else
-		display_values["up:"..url]="down"
-		end
-	end
+  for i,url in ipairs(lookup_values.ServicesUp)
+  do
+    S=stream.STREAM("tcp:" .. url, "r timeout=20")
+    if S ~= nil 
+    then
+    display_values["up:"..url]="up"
+    S:close()
+    else
+    display_values["up:"..url]="down"
+    end
+  end
 end
 
 end
@@ -1093,34 +1097,34 @@ local i, lookup, host, str
 
 if lookup_counter % 30 ==0 and lookup_values.DNSLookups ~= nil
 then
-	for i,lookup in ipairs(lookup_values.DNSLookups)
-	do
-		if string.sub(lookup, 1, 6)=="dnsup:"
-		then 
-			host=string.sub(lookup, 7) 
-		elseif string.sub(lookup, 1, 4)=="dns:"
-		then 
-			host=string.sub(lookup, 5) 
-		else
-			host=lookup
-		end
+  for i,lookup in ipairs(lookup_values.DNSLookups)
+  do
+    if string.sub(lookup, 1, 6)=="dnsup:"
+    then 
+      host=string.sub(lookup, 7) 
+    elseif string.sub(lookup, 1, 4)=="dns:"
+    then 
+      host=string.sub(lookup, 5) 
+    else
+      host=lookup
+    end
 
-		str=net.lookupIP(host)
-		if str == nil then str="" end
+    str=net.lookupIP(host)
+    if str == nil then str="" end
 
-		if string.sub(lookup, 1, 6)=="dnsup:"
-		then
+    if string.sub(lookup, 1, 6)=="dnsup:"
+    then
 
-			if string.len(str) > 0
-			then
-			display_values[lookup]="up"
-			else
-			display_values[lookup]="down"
-			end
-		else
-			display_values["dns:"..host]=str
-		end
-	end
+      if string.len(str) > 0
+      then
+      display_values[lookup]="up"
+      else
+      display_values[lookup]="down"
+      end
+    else
+      display_values["dns:"..host]=str
+    end
+  end
 end
 
 end
@@ -1140,11 +1144,11 @@ name=string.sub(name, 3, string.len(name) -1)
 
 if prefix=="@" 
 then
-	display_values[name]=0 
+  display_values[name]=0 
 elseif prefix==">" 
 then 
-	display_values[name]=0 
-	KvUpdateListFile(name, value)
+  display_values[name]=0 
+  KvUpdateListFile(name, value)
 end
 
 
@@ -1154,52 +1158,52 @@ check_names={["time"]=1, ["date"]=1, ["day_name"]=1, ["day"]=1, ["month"]=1, ["m
 
 if check_names[name] ~= nil
 then
-		table.insert(lookups, LookupTimes)
+    table.insert(lookups, LookupTimes)
 end
 
 if string.sub(name, 1, 4) == "bat:" or string.sub(name, 1, 5) == "bats:"
 then
-	table.insert(lookups, LookupBatteries)
+  table.insert(lookups, LookupBatteries)
 end
 
 
 if string.sub(name, 1,3) == "fs:"
 then
-	table.insert(lookups, LookupPartitions)
+  table.insert(lookups, LookupPartitions)
 end
 
 if string.sub(name, 1, 8) == "cpu_temp"
 then
-	table.insert(lookups, LookupTemperatures)
+  table.insert(lookups, LookupTemperatures)
 end
 
 if name == "cpu_count" or string.sub(name, 1, 4) == "load"
 then
-	table.insert(lookups, CpuUsage)
+  table.insert(lookups, CpuUsage)
 end
 
 if string.sub(name, 1, 4) == "load"
 then
-	table.insert(lookups, LookupLoad)
+  table.insert(lookups, LookupLoad)
 end
 
 if string.sub(name, 1, 3) == "ip4"
 then
-	table.insert(lookups, LookupIPv4)
+  table.insert(lookups, LookupIPv4)
 end
 
 if string.sub(name, 1, 3) == "up:"
 then
-	table.insert(lookups, LookupServicesUp)
-	if lookup_values.ServicesUp == nil then lookup_values.ServicesUp={} end
-	table.insert(lookup_values.ServicesUp, string.sub(name, 4))
+  table.insert(lookups, LookupServicesUp)
+  if lookup_values.ServicesUp == nil then lookup_values.ServicesUp={} end
+  table.insert(lookup_values.ServicesUp, string.sub(name, 4))
 end
 
 if string.sub(name, 1, 4) == "dns:" or string.sub(name,1,6)=="dnsup:"
 then
-	table.insert(lookups, LookupDNS)
-	if lookup_values.DNSLookups == nil then lookup_values.DNSLookups={} end
-	table.insert(lookup_values.DNSLookups, name)
+  table.insert(lookups, LookupDNS)
+  if lookup_values.DNSLookups == nil then lookup_values.DNSLookups={} end
+  table.insert(lookup_values.DNSLookups, name)
 end
 end
 
@@ -1222,7 +1226,7 @@ end
 
 for i,mod in ipairs(lookup_modules)
 do
-	mod.init(lookups, display)
+  mod.init(lookups, display)
 end
 
 return lookups
@@ -1236,12 +1240,12 @@ local val
 
 if strutil.strlen(value)==0
 then 
-	val=0
+  val=0
 elseif display_values[name] ~= nil 
 then 
-	val=tonumber(display_values[name]) +1
+  val=tonumber(display_values[name]) +1
 else 
-	val=1 
+  val=1 
 end
 
 display_values[name]=val
@@ -1274,31 +1278,31 @@ line=S:readln()
 
 if line ~= nil
 then
-	line=strutil.trim(line)
+  line=strutil.trim(line)
 
-	if string.len(line) > 0
-	then
-	toks=strutil.TOKENIZER(line, "=")
-	str=toks:next()
-	prefix=string.sub(str, 1, 1)
-	name=string.sub(str, 2)
-	value=toks:remaining()
+  if string.len(line) > 0
+  then
+  toks=strutil.TOKENIZER(line, "=")
+  str=toks:next()
+  prefix=string.sub(str, 1, 1)
+  name=string.sub(str, 2)
+  value=toks:remaining()
 
-	if prefix=="@"
-	then
-		KvUpdateCounter(name, value)
-	elseif prefix==">"
-	then
-		KvUpdateCounter(name, value)
-		KvUpdateListFile(name, value)
-	else -- if prefix isn't a prefix char, then name is the whole of 'str'
-		display_values[str]=toks:remaining()
-	end
-	end
+  if prefix=="@"
+  then
+    KvUpdateCounter(name, value)
+  elseif prefix==">"
+  then
+    KvUpdateCounter(name, value)
+    KvUpdateListFile(name, value)
+  else -- if prefix isn't a prefix char, then name is the whole of 'str'
+    display_values[str]=toks:remaining()
+  end
+  end
 
-	return true
+  return true
 else
-	return false
+  return false
 end
 
 end
@@ -1310,11 +1314,11 @@ local S
 S=stream.STREAM(feed.path)
 if S ~= nil
 then
-	while KvLineRead(S)
-	do
-		--nothing
-	end
-	S:close()
+  while KvLineRead(S)
+  do
+    --nothing
+  end
+  S:close()
 end
 end
 
@@ -1339,8 +1343,8 @@ local Serv
 Serv=net.SERVER("unix:"..path)
 if Serv ~= nil 
 then 
-	datasock=Serv
-	poll_streams:add(Serv:get_stream())
+  datasock=Serv
+  poll_streams:add(Serv:get_stream())
 end
 
 end
@@ -1358,13 +1362,13 @@ local output=""
 -- read up to date values from any key-value files
 for i,feed in ipairs(settings.datafeeds)
 do
-	if feed.type=="kvfile" then KvFileRead(feed) end
+  if feed.type=="kvfile" then KvFileRead(feed) end
 end
 
 -- call alll lookup functions to get up to date values
 for i,func in ipairs(settings.lookups)
 do
-	func()
+  func()
 end
 
 -- go through display string extracting any variables and
@@ -1373,18 +1377,18 @@ toks=strutil.TOKENIZER(settings.display, "$(|^(|@(|>(|)", "ms")
 str=toks:next()
 while str ~= nil
 do
-	if str=="$(" or str=="^(" or str=="@(" or str==">("
-	then
-		str=toks:next()
-		if display_values[str] ~= nil 
-		then 
-			output=output .. display_translations:process(str, display_values[str])
-		end
-	elseif strutil.strlen(str) and str ~= ")"
-	then
-		output=output..str
-	end
-	str=toks:next()
+  if str=="$(" or str=="^(" or str=="@(" or str==">("
+  then
+    str=toks:next()
+    if display_values[str] ~= nil 
+    then 
+      output=output .. display_translations:process(str, display_values[str])
+    end
+  elseif strutil.strlen(str) and str ~= ")"
+  then
+    output=output..str
+  end
+  str=toks:next()
 end
 
 return output
@@ -1747,58 +1751,58 @@ then
 str=S:readln()
 while str ~= nil
 do
-	str=strutil.trim(str)
-	toks=strutil.TOKENIZER(str, " ")
-	name=toks:next()
-	value=strutil.stripQuotes(toks:remaining())
+  str=strutil.trim(str)
+  toks=strutil.TOKENIZER(str, " ")
+  name=toks:next()
+  value=strutil.stripQuotes(toks:remaining())
 
-	if name=="display" or name=="display-string"
-	then 
-		settings.display=value
-	elseif name=="xpos"
-	then
-		settings.xpos=value
-	elseif name=="ypos"
-	then
-		settings.ypos=value
-	elseif name=="width"
-	then
-		settings.win_width=tonumber(value)
-	elseif name=="height"
-	then
-		settings.win_height=tonumber(value)
-	elseif name=="geometry"
-	then
-		ParseGeometryString(value)
-	elseif name=="align"
-	then
-		settings.align=value
-	elseif name=="font" or name=="fn"
-	then
-		settings.font=value
-	elseif name=="foreground" or name=="fg"
-	then
-		settings.foreground=value
-	elseif name=="background" or name=="bg"
-	then
-		settings.background=value
-	elseif name=="translate" or name=="tr"
-	then
-		display_translations:parse(value)
-	elseif name=="output" or name=="outtype"
-	then
-		settings.output=value
-	elseif name=="kvfile"
-	then
-		KvFileAdd(value)	
-	elseif name=="datasock"
-	then
-		settings.datasock=value
-	elseif name=="onclick"
-	then
-		table.insert(settings.onclicks, value)
-	end
-	str=S:readln()
+  if name=="display" or name=="display-string"
+  then 
+    settings.display=value
+  elseif name=="xpos"
+  then
+    settings.xpos=value
+  elseif name=="ypos"
+  then
+    settings.ypos=value
+  elseif name=="width"
+  then
+    settings.win_width=tonumber(value)
+  elseif name=="height"
+  then
+    settings.win_height=tonumber(value)
+  elseif name=="geometry"
+  then
+    ParseGeometryString(value)
+  elseif name=="align"
+  then
+    settings.align=value
+  elseif name=="font" or name=="fn"
+  then
+    settings.font=value
+  elseif name=="foreground" or name=="fg"
+  then
+    settings.foreground=value
+  elseif name=="background" or name=="bg"
+  then
+    settings.background=value
+  elseif name=="translate" or name=="tr"
+  then
+    display_translations:parse(value)
+  elseif name=="output" or name=="outtype"
+  then
+    settings.output=value
+  elseif name=="kvfile"
+  then
+    KvFileAdd(value)  
+  elseif name=="datasock"
+  then
+    settings.datasock=value
+  elseif name=="onclick"
+  then
+    table.insert(settings.onclicks, value)
+  end
+  str=S:readln()
 end
 S:close()
 end
@@ -1814,8 +1818,8 @@ toks=strutil.TOKENIZER(settings.config_files, ":")
 path=toks:next()
 while path ~= nil
 do
-	if LoadConfigFile(path) then break end
-	path=toks:next()
+  if LoadConfigFile(path) then break end
+  path=toks:next()
 end
 
 end
@@ -1825,11 +1829,11 @@ function ParseCommandLineConfigFiles(args)
 
 for i,str in ipairs(args)
 do
-	if str=="-c" 
-	then 
-		settings.config_files=args[i+1] 
-		args[i+1]=""
-	end
+  if str=="-c" 
+  then 
+    settings.config_files=args[i+1] 
+    args[i+1]=""
+  end
 end
 
 end
@@ -1840,81 +1844,81 @@ function ParseCommandLine(args)
 
 for i,str in ipairs(args)
 do
-	if str=="-c" then
-		--ignore this as we've already parsed it in 'ParseCommandLineConfigFiles'
-		args[i+1]=""
-	elseif str=="-w" then 
-		settings.win_width=args[i+1]
-		args[i+1]=""
-	elseif str=="-h" then 
-		settings.win_height=args[i+1]
-		args[i+1]=""
-	elseif str=="-t" or str=="-type" then
-		settings.output=args[i+1]
-		args[i+1]=""
-	elseif str=="-fn" or str=="-font" then
-		settings.font=args[i+1]
-		args[i+1]=""
-	elseif str=="-x" then
-		settings.xpos=args[i+1]
-		args[i+1]=""
-	elseif str=="-y" then
-		settings.ypos=args[i+1]
-		args[i+1]=""
-	elseif str=="-a" or str=="-align" then
-		settings.align=args[i+1]
-		args[i+1]=""
-	elseif str=="-bg" or str=="-background" then
-		settings.background=args[i+1]
-		args[i+1]=""
-		if string.sub(settings.background, 1, 1) ~= "#" and TranslateColorName(settings.background)=="" then settings.background="#"..settings.background end
-	elseif str=="-fg" or str=="-foreground" then
-		settings.foreground=args[i+1]
-		if string.sub(settings.foreground, 1, 1) ~= "#" and TranslateColorName(settings.foreground)=="" then settings.foreground="#"..settings.foreground end
-	elseif str=="-kvfile"
-	then
-		KvFileAdd(args[i+1])	
-		args[i+1]=""
-	elseif str=="-tr"
-	then
-		ParseDisplayTranslation(args[i+1])
-		args[i+1]=""
-	elseif str=="-sock"
-	then
-		settings.datasock=args[i+1]
-		args[i+1]=""
-	elseif str=="-onclick"
-	then
-		table.insert(settings.onclicks, args[i+1])
-		args[i+1]=""
-	elseif str=="-help-colors" or str=="--help-colors" or str=="-help-colours"
-	then
-		DisplayHelpColors()
-	elseif str=="-help-images" or str=="--help-images"
-	then
-		DisplayHelpImages()
-	elseif str=="-help-values" or str=="--help-values"
-	then
-		DisplayHelpValues()
-	elseif str=="-help-sock" or str=="--help-sock"
-	then
-		DisplayHelpDatasocket()
-	elseif str=="-help-onclick" or str=="--help-onclick"
-	then
-		DisplayHelpOnClick()
-	elseif str=="-help-translate" or str=="--help-translate"
-	then
-		DisplayHelpTranslate()
-	elseif str=="-help-config" or str=="--help-config"
-	then
-		DisplayHelpConfig()
-	elseif str=="-?" or str=="-help" or str=="--help"
-	then
-		DisplayHelp()
-	elseif strutil.strlen(args[i]) > 0
-	then
-		settings.display=args[i]
-	end	
+  if str=="-c" then
+    --ignore this as we've already parsed it in 'ParseCommandLineConfigFiles'
+    args[i+1]=""
+  elseif str=="-w" then 
+    settings.win_width=args[i+1]
+    args[i+1]=""
+  elseif str=="-h" then 
+    settings.win_height=args[i+1]
+    args[i+1]=""
+  elseif str=="-t" or str=="-type" then
+    settings.output=args[i+1]
+    args[i+1]=""
+  elseif str=="-fn" or str=="-font" then
+    settings.font=args[i+1]
+    args[i+1]=""
+  elseif str=="-x" then
+    settings.xpos=args[i+1]
+    args[i+1]=""
+  elseif str=="-y" then
+    settings.ypos=args[i+1]
+    args[i+1]=""
+  elseif str=="-a" or str=="-align" then
+    settings.align=args[i+1]
+    args[i+1]=""
+  elseif str=="-bg" or str=="-background" then
+    settings.background=args[i+1]
+    args[i+1]=""
+    if string.sub(settings.background, 1, 1) ~= "#" and TranslateColorName(settings.background)=="" then settings.background="#"..settings.background end
+  elseif str=="-fg" or str=="-foreground" then
+    settings.foreground=args[i+1]
+    if string.sub(settings.foreground, 1, 1) ~= "#" and TranslateColorName(settings.foreground)=="" then settings.foreground="#"..settings.foreground end
+  elseif str=="-kvfile"
+  then
+    KvFileAdd(args[i+1])  
+    args[i+1]=""
+  elseif str=="-tr"
+  then
+    ParseDisplayTranslation(args[i+1])
+    args[i+1]=""
+  elseif str=="-sock"
+  then
+    settings.datasock=args[i+1]
+    args[i+1]=""
+  elseif str=="-onclick"
+  then
+    table.insert(settings.onclicks, args[i+1])
+    args[i+1]=""
+  elseif str=="-help-colors" or str=="--help-colors" or str=="-help-colours"
+  then
+    DisplayHelpColors()
+  elseif str=="-help-images" or str=="--help-images"
+  then
+    DisplayHelpImages()
+  elseif str=="-help-values" or str=="--help-values"
+  then
+    DisplayHelpValues()
+  elseif str=="-help-sock" or str=="--help-sock"
+  then
+    DisplayHelpDatasocket()
+  elseif str=="-help-onclick" or str=="--help-onclick"
+  then
+    DisplayHelpOnClick()
+  elseif str=="-help-translate" or str=="--help-translate"
+  then
+    DisplayHelpTranslate()
+  elseif str=="-help-config" or str=="--help-config"
+  then
+    DisplayHelpConfig()
+  elseif str=="-?" or str=="-help" or str=="--help"
+  then
+    DisplayHelp()
+  elseif strutil.strlen(args[i]) > 0
+  then
+    settings.display=args[i]
+  end  
 
 end
 
@@ -1933,40 +1937,40 @@ local seq_cls=string.char(27) .. "[2J"
 local seq_count=1
 local retval=SHELL_OKAY
 
-	seq_cls_len=string.len(seq_cls)
-	ch=shell:readbyte();
-	if ch ==-1 then return SHELL_CLOSED end
+  seq_cls_len=string.len(seq_cls)
+  ch=shell:readbyte();
+  if ch ==-1 then return SHELL_CLOSED end
 
-	while ch > -1
-	do
-		stdio:write(string.char(ch), 1) 
+  while ch > -1
+  do
+    stdio:write(string.char(ch), 1) 
 
-		if seq_count >= seq_cls_len 
-		then
-			retval=SHELL_CLS
-		elseif string.sub(seq_cls, 1, 1) == string.char(ch) 
-		then
-			seq_count=seq_count+1
-		end
+    if seq_count >= seq_cls_len 
+    then
+      retval=SHELL_CLS
+    elseif string.sub(seq_cls, 1, 1) == string.char(ch) 
+    then
+      seq_count=seq_count+1
+    end
 
-		ch=shell:readbyte();
-	end
+    ch=shell:readbyte();
+  end
 
-	shell:flush()
-	return retval
+  shell:flush()
+  return retval
 end
 
 
 function LoadModules()
 local str, glob
 
-	glob=filesys.GLOB(settings.modules_dir.."/*.lua")
-	str=glob:next()
-	while str ~= nil
-	do
-		dofile(str)
-		str=glob:next()
-	end
+  glob=filesys.GLOB(settings.modules_dir.."/*.lua")
+  str=glob:next()
+  while str ~= nil
+  do
+    dofile(str)
+    str=glob:next()
+  end
 end
 
 
@@ -1979,9 +1983,9 @@ then
 
 if string.sub(str, 1, 6) == "click="
 then
-	val=tonumber(string.sub(str, 7))
-	item=settings.onclicks[val]
-	if item ~= nil then process.spawn(item) end
+  val=tonumber(string.sub(str, 7))
+  item=settings.onclicks[val]
+  if item ~= nil then process.spawn(item) end
 end
 
 end
@@ -2002,120 +2006,120 @@ ParseCommandLine(arg)
 LoadModules()
 
 settings.lookups=LookupsFromDisplay(settings.display)
-DataSockAdd(settings.datasock)	
+DataSockAdd(settings.datasock)  
 Out=OpenOutput(settings)
 poll_streams:add(Out)
 
 if settings.output == "term" 
 then
-	if strutil.strlen(settings.foreground) > 0
-	then
-		settings.term_foreground=TranslateColorName(settings.foreground)
-	end
+  if strutil.strlen(settings.foreground) > 0
+  then
+    settings.term_foreground=TranslateColorName(settings.foreground)
+  end
 
-	if strutil.strlen(settings.background) > 0
-	then
-		settings.term_background=string.upper(TranslateColorName(settings.background))	
-	end
+  if strutil.strlen(settings.background) > 0
+  then
+    settings.term_background=string.upper(TranslateColorName(settings.background))  
+  end
 end
 
 
 last_time=0
 while true
 do
-	
-	now=time.secs()
-	if now > last_time then update_display=true end
-	
-	if update_display == true
-	then
-		last_time=now
-	
-		start_ticks=time.millisecs()
-		str=SubstituteDisplayValues(settings)
-	
-		str=TranslateColorStrings(settings, str)
-		str=terminal.format(str)
-		end_ticks=time.millisecs()
-	
-		update_display=false
+  
+  now=time.secs()
+  if now > last_time then update_display=true end
+  
+  if update_display == true
+  then
+    last_time=now
+  
+    start_ticks=time.millisecs()
+    str=SubstituteDisplayValues(settings)
+  
+    str=TranslateColorStrings(settings, str)
+    str=terminal.format(str)
+    end_ticks=time.millisecs()
+  
+    update_display=false
 
-		if settings.output == "dwm"
-		then
-		os.execute("xsetroot -name '"..str.."'")
-		else
-		Out:writeln(str)
-		Out:flush()
-		end
+    if settings.output == "dwm"
+    then
+    os.execute("xsetroot -name '"..str.."'")
+    else
+    Out:writeln(str)
+    Out:flush()
+    end
 
-		lookup_counter=lookup_counter+1
-	end
-	
-	
-	-- if we are talking to a shell in a pty  and
-	-- if we have a recent enough libUseful-lua to support signals, then
-	-- watch for sigwinch (signal for 'window size changed') and sig int (ctrl-c)
-	if shell ~= nil
-	then
-	if process.SIGWINCH ~= nil then process.sigwatch(process.SIGWINCH) end
-	if process.SIGINT ~= nil then process.sigwatch(process.SIGINT) end
-	end
-	
-	S=poll_streams:select(100)
+    lookup_counter=lookup_counter+1
+  end
+  
+  
+  -- if we are talking to a shell in a pty  and
+  -- if we have a recent enough libUseful-lua to support signals, then
+  -- watch for sigwinch (signal for 'window size changed') and sig int (ctrl-c)
+  if shell ~= nil
+  then
+  if process.SIGWINCH ~= nil then process.sigwatch(process.SIGWINCH) end
+  if process.SIGINT ~= nil then process.sigwatch(process.SIGINT) end
+  end
+  
+  S=poll_streams:select(100)
 
-	if S ~= nil
-	then
-		if S==stdio 
-		then 
-			shell:write(stdio:getch(), 1) 
-		elseif S==shell
-		then
-			shell_result=ReadFromPty()
-			if shell_result==SHELL_CLOSED then break end
-			if shell_result==SHELL_CLS then update_display=true end
-		-- activity coming from lemonbar or dzen or other 'bar' program
-		elseif S==Out
-		then
-		ProcessBarProgramOutput(S:readln())
-		-- our listening datasocket has recieved a connection, accept a new client who will
-		-- send us messages
-		elseif S==datasock:get_stream()
-		then
-			S=datasock:accept()
-			poll_streams:add(S)
-		-- anything else must be coming from a client program that has connected to our datasock
-		elseif KvLineRead(S) == false
-		then
-			poll_streams:delete(S)
-			S:close()								
-		end
-	end
-
-	-- if we are talking to a shell in a pty (we are in xterm or terminal mode) then
-	-- there are signals that we must propgate to the pty
-	if shell ~= nil
-	then
-
-	if process.SIGWINCH ~= nil and process.sigcheck(process.SIGWINCH) 
-	then
-		shell:ptysize(term:width(), term:length() - settings.steal_lines)
+  if S ~= nil
+  then
+    if S==stdio 
+    then 
+      shell:write(stdio:getch(), 1) 
+    elseif S==shell
+    then
+      shell_result=ReadFromPty()
+      if shell_result==SHELL_CLOSED then break end
+      if shell_result==SHELL_CLS then update_display=true end
+    -- activity coming from lemonbar or dzen or other 'bar' program
+    elseif S==Out
+    then
+    ProcessBarProgramOutput(S:readln())
+    -- our listening datasocket has recieved a connection, accept a new client who will
+    -- send us messages
+    elseif S==datasock:get_stream()
+    then
+      S=datasock:accept()
+      poll_streams:add(S)
+    -- anything else must be coming from a client program that has connected to our datasock
+    elseif KvLineRead(S) == false
+    then
+      poll_streams:delete(S)
+      S:close()                
+    end
   end
 
-	if process.SIGINT ~= nil and process.sigcheck(process.SIGINT) 
-	then
-		shell:write("\x03",1)
+  -- if we are talking to a shell in a pty (we are in xterm or terminal mode) then
+  -- there are signals that we must propgate to the pty
+  if shell ~= nil
+  then
+
+  if process.SIGWINCH ~= nil and process.sigcheck(process.SIGWINCH) 
+  then
+    shell:ptysize(term:width(), term:length() - settings.steal_lines)
   end
 
-	end
+  if process.SIGINT ~= nil and process.sigcheck(process.SIGINT) 
+  then
+    shell:write("\x03",1)
+  end
 
-	-- if any child processes have exited, then collect them here
-	if process.collect ~= nil
-	then
-		process.collect()
-	else
-		-- old function call, will go away eventually
-		process.childExited(-1)
-	end
+  end
+
+  -- if any child processes have exited, then collect them here
+  if process.collect ~= nil
+  then
+    process.collect()
+  else
+    -- old function call, will go away eventually
+    process.childExited(-1)
+  end
 end
 
 
