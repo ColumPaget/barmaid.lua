@@ -1,6 +1,25 @@
+-- This module looks up 'cyber attack' status from the Internet Storm Center at isc.sans.edu
+-- use it by adding $(isc) to your display string
+-- there are three levels
+-- green: situation normal
+-- yellow: raised risk of attack activity
+-- red: cyber armageddon
+
+mod={}
+
+-- module init function, setup module and insert it into module table
+mod.init=function(self, lookups, display_str)
+if string.find(display_str, "$%(isc%)") ~= nil
+then
+	table.insert(lookups, self.lookup)
+end
+
+end
 
 
-function LookupInternetStormStatus()
+-- module lookup function, do the actual looking up and insert the result
+-- into the 'display_values' table
+mod.lookup=function(self)
 local S, str
 
 if lookup_counter % 60 == 0
@@ -17,18 +36,4 @@ end
 
 end
 
-
-function InternetStormStatusInit(lookups, display_str)
-
-if string.find(display_str, "$%(isc%)") ~= nil
-then
-	table.insert(lookups, LookupInternetStormStatus)
-end
-
-end
-
-
-mod={}
-mod.lookup=InternetStormStatusLookup
-mod.init=InternetStormStatusInit
 table.insert(lookup_modules, mod)

@@ -63,7 +63,7 @@ end
 end
 
 
-function DBL_Process()
+function DBL_Process(self)
 
 
 if lookup_counter % 360 == 0
@@ -80,7 +80,7 @@ end
 end
 
 
-function DBL_Init(lookups, display_str)
+function DBL_Init(self, lookups, display_str)
 local var_names, i, var
 
 var_names=GetDisplayVars(display_str)
@@ -103,7 +103,7 @@ do
 
 end
 
-if lookup_values.dbl_ip_list ~= nil then table.insert(lookups, DBL_Process) end
+if lookup_values.dbl_ip_list ~= nil then table.insert(lookups, self.lookup) end
 end
 
 

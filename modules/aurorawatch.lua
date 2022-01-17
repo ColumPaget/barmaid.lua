@@ -1,6 +1,11 @@
+-- This module looks up aurora borealis activity levels from aurorawatch.lancs.ac.uk
+-- Use it by adding the value $(aurorawatch) to your display string
+-- There are three leves of auroral activity, 
+-- green: no aurora expected
+-- yellow: aurora likely
+-- red: aurora very likely
 
-
-function AurorawatchLookup()
+function AurorawatchLookup(self)
 local S, doc, toks, tok, str
 
 if lookup_counter % 240 == 0
@@ -30,11 +35,11 @@ end
 end
 
 
-function AurorawatchInit(lookups, display_str)
+function AurorawatchInit(self, lookups, display_str)
 
 if string.find(display_str, "$%(aurorawatch%)") ~= nil
 then
-	table.insert(lookups, AurorawatchLookup)
+	table.insert(lookups, self.lookup)
 end
 
 end

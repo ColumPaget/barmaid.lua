@@ -6,12 +6,13 @@ require("process")
 require("terminal")
 require("sys")
 require("net")
+require("dataparser")
 
 SHELL_OKAY=0
 SHELL_CLOSED=1
 SHELL_CLS=2
 
-version="5.4"
+version="5.5"
 settings={}
 lookup_counter=0
 lookup_values={}
@@ -647,7 +648,7 @@ do
   -- sometimes this is nil, maybe because we've failed to open the file
   if bat.charge ~= nil
   then
-    if bat.max > 0
+    if bat.max ~= nil and bat.max > 0
     then
     perc=math.floor((bat.charge * 100 / bat.max) + 0.5)
     else
@@ -1226,7 +1227,7 @@ end
 
 for i,mod in ipairs(lookup_modules)
 do
-  mod.init(lookups, display)
+  mod:init(lookups, display)
 end
 
 return lookups
@@ -1691,7 +1692,7 @@ settings.display="~w$(day_name)~0 $(day) $(month_name) ~y$(time)~0 $(bats:color)
 settings.config_files="~/.config/barmaid.lua/barmaid.conf:~/.config/barmaid.conf"
 settings.config_files=settings.config_files .. ":" .. "~/.barmaid.conf"
 settings.config_files=settings.config_files .. ":/etc/.barmaid.conf"
-settings.modules_dir="/usr/local/lib/barmaid/"
+settings.modules_dir="/usr/local/lib/barmaid/:/usr/lib/barmaid:~/.local/lib/barmaid"
 settings.datasock=""
 settings.win_width=800
 settings.win_height=40
@@ -1740,10 +1741,7 @@ local S, str, name, value
 
 if strutil.strlen(path) ==0 then return end
 
-if string.sub(path, 1, 1) == "~"
-then
-path=process.getenv("HOME") .. string.sub(path, 2)
-end
+if string.sub(path, 1, 1) == "~" then path=process.getenv("HOME") .. string.sub(path, 2) end
 
 S=stream.STREAM(path, "r")
 if S ~= nil
@@ -1961,10 +1959,10 @@ local retval=SHELL_OKAY
 end
 
 
-function LoadModules()
+function LoadModulesFromDir(dir)
 local str, glob
 
-  glob=filesys.GLOB(settings.modules_dir.."/*.lua")
+  glob=filesys.GLOB(dir.."/*.lua")
   str=glob:next()
   while str ~= nil
   do
@@ -1973,6 +1971,20 @@ local str, glob
   end
 end
 
+function LoadModules()
+local toks, path
+
+toks=strutil.TOKENIZER(settings.modules_dir, ":")
+path=toks:next()
+while path ~= nil
+do
+  if string.sub(path, 1, 1) == "~" then path=process.getenv("HOME") .. string.sub(path, 2) end
+
+
+  if LoadModulesFromDir(path) then break end
+  path=toks:next()
+end
+end
 
 
 -- this function handles output coming from the bar program (lemonbar is currently the only one we support this for)
@@ -1993,16 +2005,56 @@ end
 end
 
 
+function HandleShellSignals()
+  -- if we are talking to a shell in a pty (we are in xterm or terminal mode) then
+  -- there are signals that we must propgate to the pty
+  if shell ~= nil
+  then
 
--- MAIN STARTS HERE
+  if process.SIGWINCH ~= nil and process.sigcheck(process.SIGWINCH) 
+  then
+    shell:ptysize(term:width(), term:length() - settings.steal_lines)
+  end
+
+  if process.SIGINT ~= nil and process.sigcheck(process.SIGINT) 
+  then
+    shell:write("\x03",1)
+  end
+
+  end
+end
+
+function HandleExitedChildProcesses()
+  -- if any child processes have exited, then collect them here
+  if process.collect ~= nil
+  then
+    process.collect()
+  else
+    -- old function call, will go away eventually
+    process.childExited(-1)
+  end
+end
+
+
+
+function ApplicationSetup()
+
 -- assume our output device, whatever it is, can support unicode UTF8
 terminal.utf8(3)
 
+-- load some initial settings defaults
 SettingsInit()
+
+-- init display_translations system
 display_translations=DisplayTranslations()
+
+-- parse command-line, then load config files (which might have been specified on command-line)
+-- then parse command-line again because we want command-line options to override config-files
 ParseCommandLineConfigFiles(arg)
 LoadConfigFiles()
 ParseCommandLine(arg)
+
+-- load any modules that extend functionality
 LoadModules()
 
 settings.lookups=LookupsFromDisplay(settings.display)
@@ -2025,35 +2077,46 @@ end
 
 
 last_time=0
-while true
-do
-  
-  now=time.secs()
-  if now > last_time then update_display=true end
-  
-  if update_display == true
-  then
+
+end
+
+
+
+function UpdateDisplay()
     last_time=now
   
-    start_ticks=time.millisecs()
     str=SubstituteDisplayValues(settings)
-  
     str=TranslateColorStrings(settings, str)
     str=terminal.format(str)
-    end_ticks=time.millisecs()
-  
-    update_display=false
+    display_update_required=false
 
+		-- dwm uses the 'name' value of the root window as it's input, so we have to set that
     if settings.output == "dwm"
     then
     os.execute("xsetroot -name '"..str.."'")
+		-- for other 'bar' programs we write to standard out
     else
     Out:writeln(str)
     Out:flush()
     end
 
     lookup_counter=lookup_counter+1
-  end
+end
+
+
+
+
+-- MAIN STARTS HERE
+
+ApplicationSetup()
+
+while true
+do
+  
+  now=time.secs()
+  if now > last_time then display_update_required=true end
+  
+  if display_update_required == true then UpdateDisplay() end
   
   
   -- if we are talking to a shell in a pty  and
@@ -2076,7 +2139,7 @@ do
     then
       shell_result=ReadFromPty()
       if shell_result==SHELL_CLOSED then break end
-      if shell_result==SHELL_CLS then update_display=true end
+      if shell_result==SHELL_CLS then display_update_required=true end
     -- activity coming from lemonbar or dzen or other 'bar' program
     elseif S==Out
     then
@@ -2095,31 +2158,9 @@ do
     end
   end
 
-  -- if we are talking to a shell in a pty (we are in xterm or terminal mode) then
-  -- there are signals that we must propgate to the pty
-  if shell ~= nil
-  then
+HandleShellSignals();
+HandleExitedChildProcesses()
 
-  if process.SIGWINCH ~= nil and process.sigcheck(process.SIGWINCH) 
-  then
-    shell:ptysize(term:width(), term:length() - settings.steal_lines)
-  end
-
-  if process.SIGINT ~= nil and process.sigcheck(process.SIGINT) 
-  then
-    shell:write("\x03",1)
-  end
-
-  end
-
-  -- if any child processes have exited, then collect them here
-  if process.collect ~= nil
-  then
-    process.collect()
-  else
-    -- old function call, will go away eventually
-    process.childExited(-1)
-  end
 end
 
 
