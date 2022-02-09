@@ -1750,6 +1750,10 @@ str=S:readln()
 while str ~= nil
 do
   str=strutil.trim(str)
+
+  --if string starts with '#' then it's a comment
+  if strutil.strlen(str) > 0 and string.sub(1,1) ~= '#'
+  then
   toks=strutil.TOKENIZER(str, " ")
   name=toks:next()
   value=strutil.stripQuotes(toks:remaining())
@@ -1800,7 +1804,9 @@ do
   then
     table.insert(settings.onclicks, value)
   end
+  end
   str=S:readln()
+
 end
 S:close()
 end

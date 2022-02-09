@@ -63,7 +63,7 @@ end
 end
 
 
-function DBL_Process(self)
+function DBL_Process()
 
 
 if lookup_counter % 360 == 0

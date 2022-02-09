@@ -284,6 +284,9 @@ datasock           path to a datasocket to receive key=value messages on
 onclick            configure an 'onclick' (see --help-onclick)
 ```
 
+An example config file is supplied with the program code
+
+
 
 SCREENSHOTS
 ===========
