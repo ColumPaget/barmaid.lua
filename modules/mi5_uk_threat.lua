@@ -36,23 +36,26 @@ then
 	P=dataparser.PARSER("rss", str)
         S:close()
 
-str=""
-I=P:next()
-while I ~= nil
-do
-name=I:name()
-if string.sub(name, 1,5)=="item:" then str=I:value("title") end
-I=P:next()
-end
+	str=""
+	if P ~= nil
+	then
+		I=P:next()
+		while I ~= nil
+		do
+			name=I:name()
+			if string.sub(name, 1,5)=="item:" then str=I:value("title") end
+			I=P:next()
+		end
 
--- str will be: 'Current Threat Level: SEVERE' so we clip it down
-if strutil.strlen(str) > 22 
-then 
-	str=string.sub(str, 23) 
-	display_values["mi5"]=strutil.trim(str)
-end
-end
+		-- str will be: 'Current Threat Level: SEVERE' so we clip it down
+		if strutil.strlen(str) > 22 
+		then 
+			str=string.sub(str, 23) 
+			display_values["mi5"]=strutil.trim(str)
+		end
+	end
 
+end
 end
 
 end
