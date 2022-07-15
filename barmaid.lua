@@ -2120,8 +2120,7 @@ while true
 do
   
   now=time.secs()
-  if now > last_time then display_update_required=true end
-  
+  if now ~= last_time then display_update_required=true end
   if display_update_required == true then UpdateDisplay() end
   
   
