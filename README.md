@@ -124,6 +124,8 @@ uptime           system uptime in $H:%M:%S
 cpu_count        number of cpus
 cpu_temp         cpu temperature in celsius. Currently only works on systems that have x86_pkg_temp or coretemp type sensors. For multicore systems displays the highest across all CPUs.
 cputemp:color    automatically colored cpu usage (green/yellow/red)
+cpu_freq:<cpuid> frequency of cpu, where <cpuid> has the form 'cpu0', 'cpu1' etc
+cpu_freq:avg     avergae cpu frequency across all cpus
 mem              percent memory usage
 mem:color        automatically colored memory usage (green/yellow/red)
 usedmem          used memory in metric format 
@@ -280,6 +282,9 @@ bg                 default background color
 translate          translate a value to another (see --help-translations)
 tr                 translate a value to another (see --help-translations)
 kvfile             path to a key-value file
+icon-path          colon-separated search path to find icons
+icon_path          colon-separated search path to find icons
+iconpath           colon-separated search path to find icons
 datasock           path to a datasocket to receive key=value messages on
 onclick            configure an 'onclick' (see --help-onclick)
 ```

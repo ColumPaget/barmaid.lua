@@ -7,8 +7,21 @@
 
 
 --service list. You can add extra services here
-dbl_services={"bl.spamcop.net", "sbl.spamhaus.org", "virus.rbl.jp", "cbl.abuseat.org", "dyna.spamrats.com","b.barracudacentral.org"}
 proc=nil
+
+
+function DBL_InterpretResponse(service, str)
+
+if str == nil then return false end
+
+if string.sub(str, 1, 12) == "127.255.255." then 
+io.stderr:write(service.." "..str.."\n")
+return false 
+end
+
+io.stderr:write("DBL ERROR\n")
+return true
+end
 
 
 function DBL_Lookup(ip, service)
@@ -26,19 +39,25 @@ end
 lookup=lookup .. service
 str=net.lookupIP(lookup)
 
-if str ~= nil then return true end
+if str ~= nil then io.stderr:write("dbllookup: "..str.."\n") end
 
-return false
-
+return DBL_InterpretResponse(service, str)
 end
 
 
 function DBL_ProcessServices(ip)
 local i, service
 
-for i,service in ipairs(dbl_services)
-do
-if DBL_Lookup(ip, service) == true then return true end
+if settings.modsettings["module:dbl:services"] ~= nil
+then
+	toks=strutil.TOKENIZER(settings.modsettings["module:dbl:services"], ",")
+	service=toks:next()
+	while service ~= nil
+	do
+io.stderr:write("dbl: "..tostring(service).. " "..tostring(ip).."\n")
+	if DBL_Lookup(ip, service) == true then return true end
+	service=toks:next()
+	end
 end
 
 return false
@@ -82,6 +101,11 @@ end
 
 function DBL_Init(self, lookups, display_str)
 local var_names, i, var
+
+if settings.modsettings["module:dbl:services"] == nil
+then
+	settings.modsettings["module:dbl:services"]="bl.spamcop.net,sbl.spamhaus.org,virus.rbl.jp,cbl.abuseat.org,dyna.spamrats.com,b.barracudacentral.org"
+end
 
 var_names=GetDisplayVars(display_str)
 for i, var in ipairs(var_names)
