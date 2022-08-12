@@ -6,16 +6,25 @@ SYNOPSIS
 
 barmaid.lua is a status-bar generation program with unicode and modules support. It is written in lua using libUseful-lua. It can generate output suitable for dzen2, lemonbar, xterm title-bars, dwm and the terminal. It can display info on date, time, system load, memory usage, partition usage, cpu usage, ip4 address/netmask/broadcast, hostname, kernel, architecture, ostype, uptime, cpu count, battery level, and cpu temperature. No external programs are run to generate this data, so barmaid's resource usage should be low. Unfortuantely, as barmaid pulls a lot of data from /proc and /sys, it's a mostly linux-only program. Barmaid is extensible via its modules system.
 
+
 INSTALL
 =======
 
 You'll need to install libUseful (https://github.com/ColumPaget/libUseful) and libUseful-lua (https://github.com/ColumPaget/libUseful-lua) 
 
+The program consists of one big script 'barmaid.lua'. The code is broken into parts, and can be built using the supplied makefile by typing 'make'.
+
+Either run barmaid.lua using 'lua barmaid.lua' or use the linux binfmt system to auto invoke it.
+
+Extension modules (supplied in the 'modules' subdirectory)  currently go in /usr/local/lib/barmaid/
+
+
+
 USAGE
 ======
 
 ```
-lua barmaid.lua [-t output_type] [-type output_type] [-x xpos] [-y ypos] [-w width] [-h height] [-a align] [-bg color] [-fg color] [-fn font] [-font font] [-kvfile path] [-sock path] [format string]
+lua barmaid.lua [-t output_type] [-type output_type] [-x xpos] [-y ypos] [-w width] [-h height] [-a align] [-bg color] [-fg color] [-fn font] [-font font] [-kvfile path] [-sock path] [-icon-path] [format string]
 ```
 
 online help can be called up with 'lua barmaid.lua -help' 
@@ -219,7 +228,7 @@ Where 'name' is the name of a value, and 'value' is it's actual displayed result
 
 Could be used to supply a green 'G' to indicate google is accessible, but not interfere with any other values that return 'up'.
 
-The 'key' of the translation (i.e. 'name=value') can contain shell/fnmatch-style wildcards. The symbols '*', '+', '?', '[' and ']' will be honored with their shell/fnmatch meanings. '\' can be used to quote these characters.
+The 'key' of the translation (i.e. 'name=value') can contain shell/fnmatch-style wildcards. The symbols `*`, `+`, `?`, `[` and `]` will be honored with their shell/fnmatch meanings. `\` can be used to quote these characters.
 
 EXAMPLE:
 
