@@ -5,6 +5,7 @@ function LookupMemInfo()
 local S, str, toks
 local totalmem=0
 local availmem=0
+local cachedmem, buffermem
 local mem_perc
 
 S=stream.STREAM("/proc/meminfo", "r");
@@ -20,27 +21,38 @@ then
   toks=strutil.TOKENIZER(value, "\\S")
   value=toks:next()
   if name=="MemTotal" then totalmem=tonumber(value) end
+  if name=="MemFree" then freemem=tonumber(value) end
   if name=="MemAvailable" then availmem=tonumber(value) end
   if name=="Cached" then cachedmem=tonumber(value) end
+  if name=="Buffers" then buffermem=tonumber(value) end
   str=S:readln()
   end
   S:close()
+
+	freemem=freemem + cachedmem + buffermem
 else
   availmem=sys.freemem() + sys.buffermem()
   totalmem=sys.totalmem()
 end
 
-display_values["usedmem"]=strutil.toMetric(totalmem-availmem)
-display_values["freemem"]=strutil.toMetric(availmem)
+display_values["usedmem"]=strutil.toMetric(totalmem-(availmem))
+display_values["freemem"]=strutil.toMetric(freemem)
+display_values["availmem"]=strutil.toMetric(availmem)
 display_values["totalmem"]=strutil.toMetric(totalmem)
 display_values["cachedmem"]=strutil.toMetric(cachedmem)
 
 
-mem_perc=availmem * 100 / totalmem
+mem_perc=freemem * 100 / totalmem
 AddDisplayValue("free", mem_perc, "% 3.1f", usage_color_map)
 
-mem_perc=100.0 - (availmem * 100 / totalmem)
+mem_perc=availmem * 100 / totalmem
+AddDisplayValue("avail", mem_perc, "% 3.1f", usage_color_map)
+
+mem_perc=100.0 - (freemem * 100 / totalmem)
 AddDisplayValue("mem", mem_perc, "% 3.1f", usage_color_map)
+
+mem_perc=100.0 - (availmem * 100 / totalmem)
+AddDisplayValue("memuse", mem_perc, "% 3.1f", usage_color_map)
 
 mem_perc=cachedmem * 100 / totalmem
 AddDisplayValue("cmem", mem_perc, "% 3.1f", usage_color_map)

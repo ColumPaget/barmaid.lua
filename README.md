@@ -126,10 +126,18 @@ cpu_temp         cpu temperature in celsius. Currently only works on systems tha
 cputemp:color    automatically colored cpu usage (green/yellow/red)
 cpu_freq:<cpuid> frequency of cpu, where <cpuid> has the form 'cpu0', 'cpu1' etc
 cpu_freq:avg     avergae cpu frequency across all cpus
+
 mem              percent memory usage
+memuse           percent memory usage using 'availmem' (see discussion below for difference from 'mem')
+free             percent memory free
+avail            percent memory free (see discussion below for difference from free)
 mem:color        automatically colored memory usage (green/yellow/red)
+memuse:color     percent memory usage using 'availmem' (see discussion below for difference from 'mem')
+free:color       automatically colored percent memory free
+avail:color      percent memory available (see discussion below for difference from free)
 usedmem          used memory in metric format 
 freemem          free memory in metric format
+availmem         free memory in metric format (see discussion below for difference from freemem)
 totalmem         total memory in metric format
 swap             percent swap space usage
 swap:color       automatically colored swap usage (green/yellow/red)
@@ -158,6 +166,8 @@ dnsup:<host>     lookup 'host' and return 'up' if a value is returned 'down' if 
 ```
 
 Please note, any value that has ':' at the end, takes an argument, like `bat:1` or `ip4address:eth0`.
+
+'freemem and 'availmem', 'free' and 'avail', and 'mem' and 'memuse' differ. ''freemem', free' and 'mem' are calcluated to align with the output of the command-line 'free' command. 'availmem', 'avail' and 'memuse' are calculated from the /proc/meminfo 'MemAvailable' entry. Usually there should be little difference between these, but one cause of a difference is ramdisks. If you have a tmpfs ramdisk on, say /tmp, and its consuming a lot of memory (perhaps because it contains large files) 'freemem' and 'mem' will show you have plenty of memory, even though you don't, as they will not be aware of memory consumed by the ramdisk. 'availmem' and 'memuse' will be a truer reflection of memory available. If you display both these values, and see a large difference between them, then perhaps you need to check your ramdisks!
 
 The 'ip4' values have a special case where the interface is specified as 'default' e.g. 'ip4address:default'. In this case details are returned for the first interface that isn't the local interface and has an ip address. 
 

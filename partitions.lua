@@ -23,10 +23,28 @@ end
 
 return parts
 end
-  
+ 
+
+function LookupPartitionsAnalyzePartition(part_info, requested_partitions)
+local fs_dev, fs_mount, fs_type, toks
+
+toks=strutil.TOKENIZER(part_info, "\\S")
+fs_dev=toks:next()
+fs_mount=toks:next()
+fs_type=toks:next()
+
+if fs_dev == "none" and fs_type ~= "tmpfs" then return nil end
+if fs_dev == "cgroups" then return nil end
+
+if requested_partitions[fs_mount] ~= nil then return fs_mount end
+
+return nil
+end
+
 
 function LookupPartitions()
-local str, perc, color, toks
+local str, perc
+local fs_mount
 local S, requested_partitions
 
 
@@ -39,11 +57,8 @@ then
   str=S:readln()
   while str ~= nil
   do
-    toks=strutil.TOKENIZER(str, "\\S")
-    fs_type=toks:next()
-    fs_mount=toks:next()
-
-    if fs_type ~= "none" and fs_type ~="cgroups" and requested_partitions[fs_mount] ~= nil
+		fs_mount=LookupPartitionsAnalyzePartition(str, requested_partitions)
+    if fs_mount ~= nil
     then
       perc=math.floor( (filesys.fs_used(fs_mount) * 100 / filesys.fs_size(fs_mount)) + 0.5)
       AddDisplayValue("fs:"..fs_mount, perc, nil, usage_color_map)

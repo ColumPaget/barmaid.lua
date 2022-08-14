@@ -5,7 +5,7 @@ local color=""
 
 for i,thresh in ipairs(thresholds)
 do
-  if value > thresh.value then color=thresh.color end
+  if value >= thresh.value then color=thresh.color end
 end
 
 return color

@@ -12,7 +12,7 @@ SHELL_OKAY=0
 SHELL_CLOSED=1
 SHELL_CLS=2
 
-version="5.7"
+version="6.0"
 settings={}
 lookup_counter=0
 lookup_values={}
@@ -46,7 +46,7 @@ local color=""
 
 for i,thresh in ipairs(thresholds)
 do
-  if value > thresh.value then color=thresh.color end
+  if value >= thresh.value then color=thresh.color end
 end
 
 return color
@@ -1104,8 +1104,10 @@ print("uptime         system uptime in $H:%M:%S")
 print("cpu_count      number of cpus")
 print("cpu_temp       cpu temperature in celsius. Currently only works on systems that have x86_pkg_temp or coretemp type sensors. For multicore systems displays the highest across all CPUs.")
 print("mem            percent memory usage")
+print("memuse         percent memory usage calculated from 'availmem' (see discussion below for difference to 'mem')")
 print("usedmem        used memory in metric format")
 print("freemem        free memory in metric format")
+print("availmem       available memory in metric format (see below on difference to freemem)")
 print("totalmem       total memory in metric format")
 print("cachedmem      cached memory in metric format, this can include ramdisks etc")
 print("swap           percent swap space usage")
@@ -1131,7 +1133,9 @@ print("cpu_temp:color     cpu temperature in celsius. Currently only works on sy
 print("cpu_freq:<cpuid>       cpu frequency for a specific cpu. <cpuid> has the form 'cpu0', 'cpu1' etc")
 print("cpu_freq:avg           average cpu frequency across all cpus")
 print("mem:color          percent memory usage")
+print("memuse:color       percent memory usage using 'availmem' (see discussion below for difference from 'mem')")
 print("free:color         percent memory free")
+print("avail:color        percent memory available (see discussion below for difference from free)")
 print("cmem:color         percent of memory that is cache")
 print("swap:color         percent swap space usage")
 print("usedswap:color     used swap in metric format")
@@ -1148,6 +1152,10 @@ print("load15min:color    15min load in 'top' format")
 print("up:<host>:<port>   connect to service at 'host' and 'port'. display 'up' if connection succeeds, 'down' if not")
 print("dns:<host>         lookup 'host' and return its IP address")
 print("dnsup:<host>       lookup 'host' and return 'up' if a value is returned 'down' if not")
+
+print("")
+
+print("'freemem and 'availmem', 'free' and 'avail', and 'mem' and 'memuse' differ. ''freemem', free' and 'mem' are calcluated to align with the output of the command-line 'free' command. 'availmem', 'avail' and 'memuse' are calculated from the /proc/meminfo 'MemAvailable' entry. Usually there should be little difference between these, but one cause of a difference is ramdisks. If you have a tmpfs ramdisk on, say /tmp, and its consuming a lot of memory (perhaps because it contains large files) 'freemem' and 'mem' will show you have plenty of memory, even though you don't, as they will not be aware of memory consumed by the ramdisk. 'availmem' and 'memuse' will be a truer reflection of memory available. If you display both these values, and see a large difference between them, then perhaps you need to check your ramdisks!")
 
 print("")
 
@@ -1532,6 +1540,7 @@ function LookupMemInfo()
 local S, str, toks
 local totalmem=0
 local availmem=0
+local cachedmem, buffermem
 local mem_perc
 
 S=stream.STREAM("/proc/meminfo", "r");
@@ -1547,27 +1556,38 @@ then
   toks=strutil.TOKENIZER(value, "\\S")
   value=toks:next()
   if name=="MemTotal" then totalmem=tonumber(value) end
+  if name=="MemFree" then freemem=tonumber(value) end
   if name=="MemAvailable" then availmem=tonumber(value) end
   if name=="Cached" then cachedmem=tonumber(value) end
+  if name=="Buffers" then buffermem=tonumber(value) end
   str=S:readln()
   end
   S:close()
+
+	freemem=freemem + cachedmem + buffermem
 else
   availmem=sys.freemem() + sys.buffermem()
   totalmem=sys.totalmem()
 end
 
-display_values["usedmem"]=strutil.toMetric(totalmem-availmem)
-display_values["freemem"]=strutil.toMetric(availmem)
+display_values["usedmem"]=strutil.toMetric(totalmem-(availmem))
+display_values["freemem"]=strutil.toMetric(freemem)
+display_values["availmem"]=strutil.toMetric(availmem)
 display_values["totalmem"]=strutil.toMetric(totalmem)
 display_values["cachedmem"]=strutil.toMetric(cachedmem)
 
 
-mem_perc=availmem * 100 / totalmem
+mem_perc=freemem * 100 / totalmem
 AddDisplayValue("free", mem_perc, "% 3.1f", usage_color_map)
 
-mem_perc=100.0 - (availmem * 100 / totalmem)
+mem_perc=availmem * 100 / totalmem
+AddDisplayValue("avail", mem_perc, "% 3.1f", usage_color_map)
+
+mem_perc=100.0 - (freemem * 100 / totalmem)
 AddDisplayValue("mem", mem_perc, "% 3.1f", usage_color_map)
+
+mem_perc=100.0 - (availmem * 100 / totalmem)
+AddDisplayValue("memuse", mem_perc, "% 3.1f", usage_color_map)
 
 mem_perc=cachedmem * 100 / totalmem
 AddDisplayValue("cmem", mem_perc, "% 3.1f", usage_color_map)
@@ -1743,10 +1763,28 @@ end
 
 return parts
 end
-  
+ 
+
+function LookupPartitionsAnalyzePartition(part_info, requested_partitions)
+local fs_dev, fs_mount, fs_type, toks
+
+toks=strutil.TOKENIZER(part_info, "\\S")
+fs_dev=toks:next()
+fs_mount=toks:next()
+fs_type=toks:next()
+
+if fs_dev == "none" and fs_type ~= "tmpfs" then return nil end
+if fs_dev == "cgroups" then return nil end
+
+if requested_partitions[fs_mount] ~= nil then return fs_mount end
+
+return nil
+end
+
 
 function LookupPartitions()
-local str, perc, color, toks
+local str, perc
+local fs_mount
 local S, requested_partitions
 
 
@@ -1759,11 +1797,8 @@ then
   str=S:readln()
   while str ~= nil
   do
-    toks=strutil.TOKENIZER(str, "\\S")
-    fs_type=toks:next()
-    fs_mount=toks:next()
-
-    if fs_type ~= "none" and fs_type ~="cgroups" and requested_partitions[fs_mount] ~= nil
+		fs_mount=LookupPartitionsAnalyzePartition(str, requested_partitions)
+    if fs_mount ~= nil
     then
       perc=math.floor( (filesys.fs_used(fs_mount) * 100 / filesys.fs_size(fs_mount)) + 0.5)
       AddDisplayValue("fs:"..fs_mount, perc, nil, usage_color_map)
