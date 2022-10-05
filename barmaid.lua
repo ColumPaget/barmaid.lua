@@ -791,14 +791,16 @@ end
 
 function LoadConfigFile(path)
 local S, str, name, value
+local retval=true
 
-if strutil.strlen(path) ==0 then return end
+if strutil.strlen(path) ==0 then return false end
 
 if string.sub(path, 1, 1) == "~" then path=process.getenv("HOME") .. string.sub(path, 2) end
 
 S=stream.STREAM(path, "r")
 if S ~= nil
 then
+retval=true
 str=S:readln()
 while str ~= nil
 do
@@ -873,6 +875,7 @@ end
 S:close()
 end
 
+return retval
 end
 
 
@@ -884,6 +887,7 @@ toks=strutil.TOKENIZER(settings.config_files, ":")
 path=toks:next()
 while path ~= nil
 do
+print("conf: "..path)
   if LoadConfigFile(path) then break end
   path=toks:next()
 end
