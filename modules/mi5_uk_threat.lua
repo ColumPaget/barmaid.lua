@@ -29,7 +29,7 @@ local S, P, I, name, str
 
 if lookup_counter % 60 == 0
 then
-S=stream.STREAM( "https://www.mi5.gov.uk/UKThreatLevel/UKThreatLevel.xml", "r")
+S=stream.STREAM( "https://www.mi5.gov.uk/UKThreatLevel/UKThreatLevel.xml", "r User-Agent=barmaid.lua")
 if S ~= nil
 then
         str=S:readdoc()

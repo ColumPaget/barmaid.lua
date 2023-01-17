@@ -122,12 +122,40 @@ end
 
 -- functions related to the DZen2 x11 desktop bar
 
+function DZenStartOnClick(onclick_counter)
+local item
+local count=0
+local str=""
+
+item=OnClickGet(onclick_counter)
+if item ~= nil
+then
+      if strutil.strlen(item.left) > 0 then str=str.."^ca(1," .. item.left .. ")" ; count=count+1 end
+      if strutil.strlen(item.middle) > 0 then str=str.."^ca(2," .. item.middle .. ")" ; count=count+1 end
+      if strutil.strlen(item.right) > 0 then str=str.."^ca(3," .. item.right .. ")" ; count=count+1 end
+end
+
+return str, count
+end
+
+function DZenCloseOnClick(buttons)
+local i
+local str=""
+
+for i=1,buttons,1
+do
+      str=str.."^ca()" 
+end
+
+return str
+end
 
 function DZenTranslateColorStrings(str)
 local outstr=""
 local i=1
-local len, char, val
-local onclick_counter=1, item
+local len, char, val, item
+local onclick_counter=1
+local buttons=0
 
 len=strutil.strlen(str)
 while i <= len
@@ -158,15 +186,13 @@ do
       if item ~= nil then outstr=outstr.."^i("..item..")" end
     elseif char=="{"
     then
-      item=settings.onclicks[onclick_counter]
-      if item ~= nil
-      then
-      outstr=outstr.."^ca(1," .. item .. ")"
+      item,buttons=DZenStartOnClick(onclick_counter)
+      outstr=outstr .. item
       onclick_counter=onclick_counter+1
-      end
-    elseif char=="}"
+     elseif char=="}"
     then 
-      outstr=outstr.."^ca()" 
+      outstr=outstr .. DZenCloseOnClick(buttons)
+      buttons=0
     elseif char=="0" then outstr=outstr.."^fg()^bg()"
     else outstr=outstr.."~"..char
     end
@@ -182,11 +208,66 @@ end
 
 -- functions related to the lemonbar x11 desktop bar
 
+
+function LemonbarStartOnClick(onclick_counter)
+local item
+local count=0
+local str=""
+
+item=OnClickGet(onclick_counter)
+if item ~= nil
+then
+      if strutil.strlen(item.left) > 0 then str=str.."%{A:" .. string.format("click=%d", onclick_counter) .. ":}" ; count=count+1 end
+      if strutil.strlen(item.middle) > 0 then str=str.."%{A2:" .. string.format("click=%d", onclick_counter) .. ":}" ; count=count+1 end
+      if strutil.strlen(item.right) > 0 then str=str.."%{A3:" .. string.format("click3=%d", onclick_counter) .. ":}" ; count=count+1 end
+end
+
+return str, count
+end
+
+
+function LemonbarCloseOnClick(buttons)
+local i
+local str=""
+
+for i=1,buttons,1
+do
+      str=str.."%{A}" 
+end
+
+return str
+end
+
+
+function LemonbarProcessClick(str)
+local val, item
+
+if string.sub(str, 1, 6) == "click="
+then
+  val=tonumber(string.sub(str, 7))
+  item=OnClickGet(val, "left")
+  if item ~= nil then process.spawn(item) end
+elseif string.sub(str, 1, 7) == "click2="
+then
+  val=tonumber(string.sub(str, 8))
+  item=OnClickGet(val, "middle")
+  if item ~= nil then process.spawn(item) end
+elseif string.sub(str, 1, 7) == "click3="
+then
+  val=tonumber(string.sub(str, 8))
+  item=OnClickGet(val, "right")
+  if item ~= nil then process.spawn(item) end
+end
+
+end
+
+
+
 function LemonbarTranslateColorStrings(str)
 local outstr=""
 local i=1
-local len, char
-local onclick_counter=1, item
+local len, char, item, buttons
+local onclick_counter=1
 
 outstr="%{c}"
 len=strutil.strlen(str)
@@ -219,15 +300,13 @@ do
     --  io.stderr:write("images not supported in lemonbar. ignoring ".. item .."\n")
     elseif char=="{"
     then
-      item=settings.onclicks[onclick_counter]
-      if item ~= nil
-      then
-      outstr=outstr.."%{A:" .. string.format("click=%d", onclick_counter) .. ":}"
+      item,buttons=LemonbarStartOnClick(onclick_counter)
+      outstr = outstr .. item
       onclick_counter=onclick_counter+1
-      end
     elseif char=="}"
     then 
-      outstr=outstr.."%{A}" 
+	LemonbarCloseOnClick(buttons)
+	buttons=0
     else outstr=outstr..char
     end
   elseif char=="%" then outstr=outstr.."%%"
@@ -496,21 +575,10 @@ return S
 end
 
 
--- this function handles output coming from the bar program (lemonbar is currently the only one we support this for)
 function ProcessBarProgramOutput(str)
-
-if settings.output=="lemonbar"
-then
-
-if string.sub(str, 1, 6) == "click="
-then
-  val=tonumber(string.sub(str, 7))
-  item=settings.onclicks[val]
-  if item ~= nil then process.spawn(item) end
-end
-
-end
-
+str=strutil.trim(str)
+if string.sub(str, 1, 6) == "reload" then KvReloadCounter(string.sub(str, 8)) end
+if settings.output=="lemonbar" then LemonbarProcessClick(str) end
 end
 
 -- functions relating to reading data from sysfs
@@ -533,6 +601,29 @@ end
 
 
 -- functions related to key-value messages sent to us from other programs
+
+function KvReloadCounter(name)
+local S, str
+local count=0
+
+
+str=process.getenv("HOME").."/.barmaid/"..name..".lst"
+S=stream.STREAM(str, "r")
+if S ~= nil
+then
+  str=S:readln()
+  while str ~= nil
+  do
+  count=count+1
+  str=S:readln()
+  end
+  S:close()
+end
+
+display_values[name]=count
+
+end
+
 
 function KvUpdateCounter(name, value)
 local val
@@ -732,6 +823,39 @@ end
 return translations
 end
 
+
+function OnClickAdd(value)
+local toks, tok
+local click={}
+
+toks=strutil.TOKENIZER(value, "|")
+
+click.left=toks:next()
+click.middle=toks:next()
+click.right=toks:next()
+
+table.insert(settings.onclicks, click)
+
+end
+
+function OnClickGet(index, button)
+return settings.onclicks[index]
+end
+
+function OnClickGetButton(index, button)
+local click
+
+click=settings.onclicks[index]
+if click ~= nil
+then
+	if button == "left" then return click.left 
+	elseif button == "middle" then return click.middle
+	elseif button == "right" then return click.right
+	end
+end
+
+return ""
+end
 -- functions related to configuration, both on the command-line and from config files
 
 
@@ -866,7 +990,7 @@ do
     settings.datasock=value
   elseif name=="onclick"
   then
-    table.insert(settings.onclicks, value)
+    OnClickAdd(value)
   end
   end
   str=S:readln()
@@ -887,7 +1011,6 @@ toks=strutil.TOKENIZER(settings.config_files, ":")
 path=toks:next()
 while path ~= nil
 do
-print("conf: "..path)
   if LoadConfigFile(path) then break end
   path=toks:next()
 end
@@ -959,7 +1082,7 @@ do
     args[i+1]=""
   elseif str=="-onclick"
   then
-    table.insert(settings.onclicks, args[i+1])
+    OnClickAdd(args[i+1])
     args[i+1]=""
   elseif str=="-help-colors" or str=="--help-colors" or str=="-help-colours"
   then
@@ -1208,13 +1331,26 @@ end
 function DisplayHelpOnClick()
 
 print()
-print("Clickable areas are supported for dzen2 and lemonbar bars. These are defined using ~{ and ~} to mark the start and the end of a clickable area. These areas then match to -onclick options given on the barmaid command line. The first '~{' in the display string matches the first -onclick option, and so on. For example:")
+print("Clickable areas are supported for dzen2 and lemonbar bars. These are defined using ~{ and ~} to mark the start and the end of a clickable area. These areas then match to -onclick options given on the barmaid command line, or 'onclick' entries in the config file. The first '~{' in the display string matches the first -onclick option, and so on. For example:")
 print()
 print("   lua barmaid.lua '~{ 1st on click~}  ~{ 2nd on click ~}' -onclick xterm -onclick 'links -g www.google.com'")
 print()
 print("will create two clickable areas, the first of which will launch and xterm when clicked, and the second will launch the links webbrowser.");
 print()
-
+print("To achieve the same thing in the config file:")
+print()
+print("    display ~{ 1st on click~}  ~{ 2nd on click ~} ")
+print("    onclick xterm ")
+print("    onclick 'links -g www.google.com'")
+print()
+print("if it's desired to use the second and third mouse buttons to apply multiple click options to an area, then the pipe/bar symbol '|' can be used to add up to three actions:")
+print()
+print("    display ~{ 1st on click~}  ~{ 2nd on click ~} ")
+print("    onclick xterm|rxvt|kitty ")
+print("    onclick 'links -g www.google.com'||firefox")
+print()
+print("In this example left clicking (button 1) on '1st on click' will launch xterm, middle clicking (button 2) will launch rxvt, and right clicking (button 3) will launch kitty.")
+print("Similarly left click on '2nd on click' will launch links, and right click will launch firefox.")
 os.exit(0)
 end
 

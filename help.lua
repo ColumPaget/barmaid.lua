@@ -208,13 +208,26 @@ end
 function DisplayHelpOnClick()
 
 print()
-print("Clickable areas are supported for dzen2 and lemonbar bars. These are defined using ~{ and ~} to mark the start and the end of a clickable area. These areas then match to -onclick options given on the barmaid command line. The first '~{' in the display string matches the first -onclick option, and so on. For example:")
+print("Clickable areas are supported for dzen2 and lemonbar bars. These are defined using ~{ and ~} to mark the start and the end of a clickable area. These areas then match to -onclick options given on the barmaid command line, or 'onclick' entries in the config file. The first '~{' in the display string matches the first -onclick option, and so on. For example:")
 print()
 print("   lua barmaid.lua '~{ 1st on click~}  ~{ 2nd on click ~}' -onclick xterm -onclick 'links -g www.google.com'")
 print()
 print("will create two clickable areas, the first of which will launch and xterm when clicked, and the second will launch the links webbrowser.");
 print()
-
+print("To achieve the same thing in the config file:")
+print()
+print("    display ~{ 1st on click~}  ~{ 2nd on click ~} ")
+print("    onclick xterm ")
+print("    onclick 'links -g www.google.com'")
+print()
+print("if it's desired to use the second and third mouse buttons to apply multiple click options to an area, then the pipe/bar symbol '|' can be used to add up to three actions:")
+print()
+print("    display ~{ 1st on click~}  ~{ 2nd on click ~} ")
+print("    onclick xterm|rxvt|kitty ")
+print("    onclick 'links -g www.google.com'||firefox")
+print()
+print("In this example left clicking (button 1) on '1st on click' will launch xterm, middle clicking (button 2) will launch rxvt, and right clicking (button 3) will launch kitty.")
+print("Similarly left click on '2nd on click' will launch links, and right click will launch firefox.")
 os.exit(0)
 end
 

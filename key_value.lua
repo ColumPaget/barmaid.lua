@@ -1,5 +1,28 @@
 -- functions related to key-value messages sent to us from other programs
 
+function KvReloadCounter(name)
+local S, str
+local count=0
+
+
+str=process.getenv("HOME").."/.barmaid/"..name..".lst"
+S=stream.STREAM(str, "r")
+if S ~= nil
+then
+  str=S:readln()
+  while str ~= nil
+  do
+  count=count+1
+  str=S:readln()
+  end
+  S:close()
+end
+
+display_values[name]=count
+
+end
+
+
 function KvUpdateCounter(name, value)
 local val
 

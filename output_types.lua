@@ -97,20 +97,9 @@ return S
 end
 
 
--- this function handles output coming from the bar program (lemonbar is currently the only one we support this for)
 function ProcessBarProgramOutput(str)
-
-if settings.output=="lemonbar"
-then
-
-if string.sub(str, 1, 6) == "click="
-then
-  val=tonumber(string.sub(str, 7))
-  item=settings.onclicks[val]
-  if item ~= nil then process.spawn(item) end
-end
-
-end
-
+str=strutil.trim(str)
+if string.sub(str, 1, 6) == "reload" then KvReloadCounter(string.sub(str, 8)) end
+if settings.output=="lemonbar" then LemonbarProcessClick(str) end
 end
 

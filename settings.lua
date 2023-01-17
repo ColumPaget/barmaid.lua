@@ -132,7 +132,7 @@ do
     settings.datasock=value
   elseif name=="onclick"
   then
-    table.insert(settings.onclicks, value)
+    OnClickAdd(value)
   end
   end
   str=S:readln()
@@ -224,7 +224,7 @@ do
     args[i+1]=""
   elseif str=="-onclick"
   then
-    table.insert(settings.onclicks, args[i+1])
+    OnClickAdd(args[i+1])
     args[i+1]=""
   elseif str=="-help-colors" or str=="--help-colors" or str=="-help-colours"
   then

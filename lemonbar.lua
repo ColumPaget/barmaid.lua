@@ -1,10 +1,65 @@
 -- functions related to the lemonbar x11 desktop bar
 
+
+function LemonbarStartOnClick(onclick_counter)
+local item
+local count=0
+local str=""
+
+item=OnClickGet(onclick_counter)
+if item ~= nil
+then
+      if strutil.strlen(item.left) > 0 then str=str.."%{A:" .. string.format("click=%d", onclick_counter) .. ":}" ; count=count+1 end
+      if strutil.strlen(item.middle) > 0 then str=str.."%{A2:" .. string.format("click=%d", onclick_counter) .. ":}" ; count=count+1 end
+      if strutil.strlen(item.right) > 0 then str=str.."%{A3:" .. string.format("click3=%d", onclick_counter) .. ":}" ; count=count+1 end
+end
+
+return str, count
+end
+
+
+function LemonbarCloseOnClick(buttons)
+local i
+local str=""
+
+for i=1,buttons,1
+do
+      str=str.."%{A}" 
+end
+
+return str
+end
+
+
+function LemonbarProcessClick(str)
+local val, item
+
+if string.sub(str, 1, 6) == "click="
+then
+  val=tonumber(string.sub(str, 7))
+  item=OnClickGet(val, "left")
+  if item ~= nil then process.spawn(item) end
+elseif string.sub(str, 1, 7) == "click2="
+then
+  val=tonumber(string.sub(str, 8))
+  item=OnClickGet(val, "middle")
+  if item ~= nil then process.spawn(item) end
+elseif string.sub(str, 1, 7) == "click3="
+then
+  val=tonumber(string.sub(str, 8))
+  item=OnClickGet(val, "right")
+  if item ~= nil then process.spawn(item) end
+end
+
+end
+
+
+
 function LemonbarTranslateColorStrings(str)
 local outstr=""
 local i=1
-local len, char
-local onclick_counter=1, item
+local len, char, item, buttons
+local onclick_counter=1
 
 outstr="%{c}"
 len=strutil.strlen(str)
@@ -37,15 +92,13 @@ do
     --  io.stderr:write("images not supported in lemonbar. ignoring ".. item .."\n")
     elseif char=="{"
     then
-      item=settings.onclicks[onclick_counter]
-      if item ~= nil
-      then
-      outstr=outstr.."%{A:" .. string.format("click=%d", onclick_counter) .. ":}"
+      item,buttons=LemonbarStartOnClick(onclick_counter)
+      outstr = outstr .. item
       onclick_counter=onclick_counter+1
-      end
     elseif char=="}"
     then 
-      outstr=outstr.."%{A}" 
+	LemonbarCloseOnClick(buttons)
+	buttons=0
     else outstr=outstr..char
     end
   elseif char=="%" then outstr=outstr.."%%"

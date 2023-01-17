@@ -1,11 +1,39 @@
 -- functions related to the DZen2 x11 desktop bar
 
+function DZenStartOnClick(onclick_counter)
+local item
+local count=0
+local str=""
+
+item=OnClickGet(onclick_counter)
+if item ~= nil
+then
+      if strutil.strlen(item.left) > 0 then str=str.."^ca(1," .. item.left .. ")" ; count=count+1 end
+      if strutil.strlen(item.middle) > 0 then str=str.."^ca(2," .. item.middle .. ")" ; count=count+1 end
+      if strutil.strlen(item.right) > 0 then str=str.."^ca(3," .. item.right .. ")" ; count=count+1 end
+end
+
+return str, count
+end
+
+function DZenCloseOnClick(buttons)
+local i
+local str=""
+
+for i=1,buttons,1
+do
+      str=str.."^ca()" 
+end
+
+return str
+end
 
 function DZenTranslateColorStrings(str)
 local outstr=""
 local i=1
-local len, char, val
-local onclick_counter=1, item
+local len, char, val, item
+local onclick_counter=1
+local buttons=0
 
 len=strutil.strlen(str)
 while i <= len
@@ -36,15 +64,13 @@ do
       if item ~= nil then outstr=outstr.."^i("..item..")" end
     elseif char=="{"
     then
-      item=settings.onclicks[onclick_counter]
-      if item ~= nil
-      then
-      outstr=outstr.."^ca(1," .. item .. ")"
+      item,buttons=DZenStartOnClick(onclick_counter)
+      outstr=outstr .. item
       onclick_counter=onclick_counter+1
-      end
-    elseif char=="}"
+     elseif char=="}"
     then 
-      outstr=outstr.."^ca()" 
+      outstr=outstr .. DZenCloseOnClick(buttons)
+      buttons=0
     elseif char=="0" then outstr=outstr.."^fg()^bg()"
     else outstr=outstr.."~"..char
     end
