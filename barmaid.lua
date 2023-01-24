@@ -12,7 +12,7 @@ SHELL_OKAY=0
 SHELL_CLOSED=1
 SHELL_CLS=2
 
-version="6.1"
+version="6.2"
 settings={}
 lookup_counter=0
 lookup_values={}
@@ -1060,6 +1060,9 @@ do
     args[i+1]=""
   elseif str=="-a" or str=="-align" then
     settings.align=args[i+1]
+    args[i+1]=""
+  elseif str=="-fg" or str=="-foreground" then
+    settings.foreground=args[i+1]
     args[i+1]=""
   elseif str=="-bg" or str=="-background" then
     settings.background=args[i+1]
