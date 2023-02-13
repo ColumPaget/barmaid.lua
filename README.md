@@ -125,6 +125,8 @@ seconds
 year
 month
 day
+tztime:<zone>    lookup curr time in timezone. e.g. '$(tztime:America/Chicago)'
+tzdate:<zone>    lookup curr date in timezone. e.g. '$(tzdate:CET)
 hostname         system hostname
 arch             system architecture
 os               system os type

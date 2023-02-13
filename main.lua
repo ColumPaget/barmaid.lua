@@ -66,7 +66,7 @@ end
 check_names={["time"]=1, ["date"]=1, ["day_name"]=1, ["day"]=1, ["month"]=1, ["month_name"]=1, ["year"]=1, ["hours"]=1, ["minutes"]=1, ["mins"]=1, ["seconds"]=1, ["secs"]=1}
 
 
-if check_names[name] ~= nil
+if check_names[name] ~= nil or string.sub(name, 1, 6) == "tztime" or string.sub(name, 1, 6) == "tzdate"
 then
     table.insert(lookups, LookupTimes)
 end
@@ -75,7 +75,6 @@ if string.sub(name, 1, 4) == "bat:" or string.sub(name, 1, 5) == "bats:"
 then
   table.insert(lookups, LookupBatteries)
 end
-
 
 if string.sub(name, 1,3) == "fs:"
 then

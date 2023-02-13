@@ -12,7 +12,7 @@ SHELL_OKAY=0
 SHELL_CLOSED=1
 SHELL_CLS=2
 
-version="6.2"
+version="6.3"
 settings={}
 lookup_counter=0
 lookup_values={}
@@ -1226,6 +1226,8 @@ print("seconds")
 print("year")
 print("month")
 print("day")
+print("tztime:<zone>  time in timezone 'zone'")        
+print("tzdate:<zone>  date in timezone 'zone'")        
 print("hostname       system hostname")
 print("arch           system architecture")
 print("os             system os type")
@@ -2062,10 +2064,36 @@ function LookupTimes()
   display_values.year=time.format("%Y")
   display_values.month=time.format("%m")
   display_values.day=time.format("%d")
+	LookupTimezones()
 end
 
 
 
+function LookupTimezones()
+local toks, str
+local parts={}
+
+toks=strutil.TOKENIZER(settings.display, "$(|^(|:|)", "ms")
+str=toks:next()
+while str ~= nil
+do
+  if str=="$(" or str=="^("
+  then
+    str=toks:next()
+    if str=="tztime" or str=="tzdate"
+    then
+    str=toks:next() --consume the ':'
+    str=toks:next()
+		display_values["tzdate:"..str]=time.format("%Y/%m:%d", str)
+		display_values["tztime:"..str]=time.format("%H:%M:%S", str)
+    end
+  end
+  str=toks:next()
+end
+
+return parts
+end
+ 
 
 -- these functions relate to loading modules that add features or otherwise change the behavior of barmaid
 
@@ -2165,7 +2193,7 @@ end
 check_names={["time"]=1, ["date"]=1, ["day_name"]=1, ["day"]=1, ["month"]=1, ["month_name"]=1, ["year"]=1, ["hours"]=1, ["minutes"]=1, ["mins"]=1, ["seconds"]=1, ["secs"]=1}
 
 
-if check_names[name] ~= nil
+if check_names[name] ~= nil or string.sub(name, 1, 6) == "tztime" or string.sub(name, 1, 6) == "tzdate"
 then
     table.insert(lookups, LookupTimes)
 end
@@ -2174,7 +2202,6 @@ if string.sub(name, 1, 4) == "bat:" or string.sub(name, 1, 5) == "bats:"
 then
   table.insert(lookups, LookupBatteries)
 end
-
 
 if string.sub(name, 1,3) == "fs:"
 then
