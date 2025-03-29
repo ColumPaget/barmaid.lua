@@ -7,12 +7,13 @@ require("terminal")
 require("sys")
 require("net")
 require("dataparser")
+require("hash")
 
 SHELL_OKAY=0
 SHELL_CLOSED=1
 SHELL_CLS=2
 
-version="6.3"
+version="6.5"
 settings={}
 lookup_counter=0
 lookup_values={}
@@ -39,6 +40,10 @@ thermal_color_map={
         {value=60, color="~r"},
         {value=80, color="~R"}
 }
+
+
+
+
 -- functions relating to displayed colors, but these are generic functions not related to a specific display/bartype
 
 function AutoColorValue(value, thresholds)
@@ -72,6 +77,90 @@ return("")
 end
 
 
+--[[
+
+functions related to simple text animations. These are declared as
+comma-separated lists like so:
+
+
+~a{1,2,3,4}
+
+the above would cause the displayed value to march from 1 to 4 over and over
+for as long as the animation is active. Other effects can be obtained with
+clever use of characters, e.g.
+
+~a{\,|,/,-,}
+
+should create a classic 'spinner' and
+
+~a{.,o,O} 
+
+should create a 'bubbling' effect
+
+However, it's important to use monospaced fonts to get good results
+
+Color tags like ~r, or ~g can be used in these animations:
+
+~a{~r-~0--,-~r-~0,--~r-~0,-~r-~0-}
+
+Gives a 'knight rider' effect with a single red '-' sliding back and forth
+
+
+]]--
+
+
+
+animations={
+
+--animations.tick() returns the next string in the animation
+tick=function(self, anim, pos)
+local toks, str, i
+local count=0
+
+toks=strutil.TOKENIZER(anim, ",", "q")
+str=toks:next()
+while str
+do
+count = count + 1
+str=toks:next()
+end
+
+if count > 0 then count = pos % count end
+
+toks=strutil.TOKENIZER(anim, ",", "q")
+for i=0,count,1
+do
+str=toks:next()
+end
+
+return str
+end,
+
+
+-- find ~a{...} stanzas in an input string and process them
+process=function(self, input, pos)
+local toks, str 
+local output=""
+
+toks=strutil.TOKENIZER(input, "~a{|}", "ms")
+str=toks:next()
+while str
+do
+  if str == "~a{"
+  then
+		str=toks:next()
+		output=output .. self:tick(str, pos)
+		toks:next() -- remove finishing '}'
+  else output=output .. str
+  end
+str=toks:next()
+end
+
+
+return output
+end
+
+}
 --functions related to loading images that are used with bars like dzen2 and lemonbar that support this feature
 
 --checks if a .xpm version of an image has been cached in ~/.local/share/cache/icons
@@ -82,7 +171,8 @@ local extn, str
 extn=filesys.extn(path)
 if extn==".xpm" then return path end 
 
-str=string.gsub(filesys.basename(path), extn, ".xpm")
+
+str=hash.hashstr(url, "md5", "ibase64") .. "-" .. string.gsub(filesys.basename(path), extn, ".xpm")
 cache_path=process.getenv("HOME") .. "/.local/share/cache/icons/" .. str
 if filesys.exists(cache_path) then return cache_path end
 
@@ -1261,29 +1351,31 @@ print("load15min      15min load in 'top' format")
 print("")
 print("Available auto-colored values are:")
 print()
-print("cpu_temp:color     cpu temperature in celsius. Currently only works on systems that have x86_pkg_temp or coretemp type sensors. For multicore systems displays the highest across all CPUs.")
+print("cpu_temp:color         cpu temperature in celsius. Currently only works on systems that have x86_pkg_temp or coretemp type sensors. For multicore systems displays the highest across all CPUs.")
 print("cpu_freq:<cpuid>       cpu frequency for a specific cpu. <cpuid> has the form 'cpu0', 'cpu1' etc")
 print("cpu_freq:avg           average cpu frequency across all cpus")
-print("mem:color          percent memory usage")
-print("memuse:color       percent memory usage using 'availmem' (see discussion below for difference from 'mem')")
-print("free:color         percent memory free")
-print("avail:color        percent memory available (see discussion below for difference from free)")
-print("cmem:color         percent of memory that is cache")
-print("swap:color         percent swap space usage")
-print("usedswap:color     used swap in metric format")
-print("freeswap:color     free swap in metric format")
-print("totalswap:color    total swap in metric format")
-print("bat:<name>:color   percentage remaining battery. This requires a battery number suffix, so `$(bat:0)` for the first battery")
-print("bats:color         info for all batteries. If no batteries present, this will be blank.")
-print("fs:<path>:color    filesystem use percent. Requires a filesystem mount suffix, so `$(fs:/home)` for filesystem on /home")
-print("load_percent:color system percentage load (instantaneous cpu usage)")
-print("load:color         system load (instantaneous cpu usage) in 'top' format")
-print("load1min:color     1min  load in 'top' format")
-print("load5min:color     5min  load in 'top' format")
-print("load15min:color    15min load in 'top' format")
-print("up:<host>:<port>   connect to service at 'host' and 'port'. display 'up' if connection succeeds, 'down' if not")
-print("dns:<host>         lookup 'host' and return its IP address")
-print("dnsup:<host>       lookup 'host' and return 'up' if a value is returned 'down' if not")
+print("mem:color              percent memory usage")
+print("memuse:color           percent memory usage using 'availmem' (see discussion below for difference from 'mem')")
+print("free:color             percent memory free")
+print("avail:color            percent memory available (see discussion below for difference from free)")
+print("cmem:color             percent of memory that is cache")
+print("swap:color             percent swap space usage")
+print("usedswap:color         used swap in metric format")
+print("freeswap:color         free swap in metric format")
+print("totalswap:color        total swap in metric format")
+print("bat:<name>:color       percentage remaining battery. This requires a battery number suffix, so `$(bat:0)` for the first battery")
+print("bats:color             info for all batteries. If no batteries present, this will be blank.")
+print("bats_life              remaining life of all batteries at current power draw.")
+print("bats_life:color        remaining life of all batteries at current power draw (greem > 1hr, yellow > 0.5 hr, red below 3min)")
+print("fs:<path>:color        filesystem use percent. Requires a filesystem mount suffix, so `$(fs:/home)` for filesystem on /home")
+print("load_percent:color     system percentage load (instantaneous cpu usage)")
+print("load:color             system load (instantaneous cpu usage) in 'top' format")
+print("load1min:color         1min  load in 'top' format")
+print("load5min:color         5min  load in 'top' format")
+print("load15min:color        15min load in 'top' format")
+print("up:<host>:<port>       connect to service at 'host' and 'port'. display 'up' if connection succeeds, 'down' if not")
+print("dns:<host>             lookup 'host' and return its IP address")
+print("dnsup:<host>           lookup 'host' and return 'up' if a value is returned 'down' if not")
 
 print("")
 
@@ -1440,8 +1532,12 @@ print("onclick            configure an 'onclick' (see --help-onclick)")
 os.exit(0)
 end
 
--- functions relating to looking up battery life/usage
+--[[
 
+Don't try to make this into an object, as Lookup functions
+get put in a list and called as functions in that list
+
+]]--
 
 
 function GetBattery(name, path)
@@ -1462,11 +1558,14 @@ bat.charge=tonumber(SysFSReadFile(path.."/energy_now"))
 bat.max=tonumber(SysFSReadFile(path.."/energy_full"))
 end
 
+bat.energy=tonumber(SysFSReadFile(path.."/energy_now"))
+bat.power=tonumber(SysFSReadFile(path.."/power_now"))
+
 return bat
 end
 
 
-function GetBatteries()
+function GetAllBatteries()
 local Glob, str, bat
 local bats={}
 
@@ -1489,8 +1588,22 @@ return bats
 end
 
 
+function BatteryFormatLife(hours)
+local str=""
+
+int,fract=math.modf(hours)
+if int > 0 then str=int .. "h" end
+
+str=str.. math.floor(fract * 60) .."m"
+
+return str
+end
+
+
 function LookupBatteries()
-local bats, i, bat, perc
+local bats, batnum, i, bat, perc, val, prefix
+local total_energy=0
+local total_power=0
 local bats_str=""
 local bats_str_color=""
 local color_map={
@@ -1501,11 +1614,12 @@ local color_map={
 }
 
 display_values["bats"]=""
-bats=GetBatteries()
+bats=GetAllBatteries()
 
 for i,bat in ipairs(bats)
 do
-  name="bat:"..tostring(i-1)
+	batnum=tostring(i-1)
+  name="bat:"..batnum
   -- sometimes this is nil, maybe because we've failed to open the file
   if bat.charge ~= nil
   then
@@ -1514,26 +1628,36 @@ do
     perc=math.floor((bat.charge * 100 / bat.max) + 0.5)
     else
     perc=0
+		end
   end
-
   AddDisplayValue(name, perc, "%d", color_map)
-  if bat.status == "Charging" then display_values["charging:"..i]="~~" end
+
+  if bat.status == "Charging" then display_values["charging:" .. batnum]="y"
+  else display_values["charging:" .. batnum]="n" end
+
+	AddDisplayValue(name .. ":life", bat.energy / bat.power, "%.2f", nill)
 
   bats_str=bats_str .. name..":"..display_values[name].."%"
   bats_str_color=bats_str_color .. name..":"..display_values[name..":color"].."%"
-  if bat.status == "Charging" 
-  then
-    bats_str=bats_str.."~"
-    bats_str_color=bats_str_color.."~"
-  else
-    bats_str=bats_str.." "
-    bats_str_color=bats_str_color.." "
-  end
-  end
+
+  total_energy=total_energy + bat.energy
+  total_power=total_power + bat.power
 end
 
 display_values["bats"]=bats_str
 display_values["bats:color"]=bats_str_color
+
+-- milliWattHours divided by milliWatts gives Hours
+val=total_energy / total_power
+display_values["bats_life"]=BatteryFormatLife(val)
+
+if val > 1.0 then prefix="~g"
+elseif val > 0.5 then prefix="~y"
+elseif val > 0.1 then prefix="~r"
+else prefix="~R~w"
+end
+
+display_values["bats_life:color"]=prefix .. BatteryFormatLife(val) .."~0"
 
 end
 
@@ -2299,10 +2423,13 @@ end
 
 -- go through display string extracting any variables and
 -- substituting them for up-to-date values
-toks=strutil.TOKENIZER(settings.display, "$(|^(|@(|>(|)", "ms")
+toks=strutil.TOKENIZER(settings.display, "$(|^(|@(|>(|)|~a{|}", "ms")
 str=toks:next()
 while str ~= nil
 do
+if strutil.strlen(str) > 0
+then
+	-- these are various types of variable
   if str=="$(" or str=="^(" or str=="@(" or str==">("
   then
     str=toks:next()
@@ -2310,13 +2437,17 @@ do
     then 
       output=output .. display_translations:process(str, display_values[str])
     end
-  elseif strutil.strlen(str) and str ~= ")"
+  elseif str ~= ")"
   then
     output=output..str
   end
+end
   str=toks:next()
 end
 
+
+
+output=animations:process(output, lookup_counter)
 if string.find(output, '%(') ~= nil then io.stderr:write("ERR: ["..output.."]\n") end
 return output
 end

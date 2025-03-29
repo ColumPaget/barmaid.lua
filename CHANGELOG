@@ -1,0 +1,101 @@
+v6.5 (2025-03-29)
+  * added simple 'animations'
+  * add 'bat_life' value
+  * don't use cache of images with same name but different paths
+
+v6.4 (2023-02-13)
+  * added tztime and tzdate to display date/time in a given timezone
+
+v6.3 (2023-01-24)
+  * fix missing -fg option
+
+v6.2 (2023-01-17)
+  * add support for left and right click treated seperately in dzen2 etc
+  * only load 1 config file
+  * added 'availmem' and make 'freemem' compatible with 'free' command. allow displaying tmpfs usage
+
+v6.0 (2022-08-12)
+  * break up into seperate code modules and add Makefile
+  * Add 'iconpath' setting. 
+  * Add 'cpu_freq' lookup
+
+v5.7 (2022-07-15)
+  * handle system clock being set BACK
+  * fix crash if mi5 reply not parseable
+
+v5.6 (2022-02-09)
+  * added openvpn module. 
+  * added example config file
+
+v5.5 (2022-01-17)
+  * added MI5 terroism/threat status
+  * fix for crash if can't read battery values
+
+v5.4 (2021-06-02)
+  * added alignment options for dzen2
+  * support dwm
+  * improve dbl module to do lookups asyncronously
+  * lookup interface with default route instead of guessing
+
+v5.3 (2021-01-04)
+  * clear down list files on startup. 
+  * add 'cachedmem' values
+
+v5.2 (2020-12-24)
+  * added 'list' values and wildcards in translation keys
+  * DisplayTranslations pattern match
+  * improved DisplayTranslation mechanism
+  * adding event list types
+  * fixes to battery lookups
+  * new 'dbl' module for dns-blocklists
+  * fix for datasock issues
+
+v5.0 (2020-10-25)
+  * config file, value translations, dns lookup values, 'up:' service up values
+  * initial work on adding 'service up check'
+  * Remove -sock connections when closed
+
+v4.0 (2020-09-06)
+  * support for images, 
+  * clickable areas added
+  * counters added
+  * only lookup usage of requested partitions
+
+v3.2 (2020-08-02)
+  * added -kvfile and -sock options
+
+v3.1 (2020-07-30)
+  * add modules system. 
+  * add named autocolored values
+  * Handle 'no connection' situation in isc.lua and aurorawatch.lua
+
+v3.0 (2020-06-21)
+  * Module support added
+  * propagate signals to pty
+
+v2.0 (2020-06-15)
+  * added online help
+  * now allow bar in the xterm title
+  * handle integer/float issue with lua5.2.
+  *  Make a guess at the ip to display rather than just displaying eth0
+
+v1.4 (2019-11-25)
+  * Add LICENSE file
+
+v1.3 (2019-11-24)
+  * add screenshots to README.md
+  * 'bottom bar' in terminal now works
+  * added autocolor to temperature readings
+  * 'bats' item added to show all batteries if they exist
+  * added coretemp hwmon reading
+  * more expressive coloring function for values
+
+v1.2 (2019-11-22)
+  * changes to handle some functions in libUseful v2.9 that now return bools rather than ints
+  * work on a proper terminal bar
+
+v1.1 (2019-11-20)
+  * handle terminal background color
+
+v1.0 (2019-11-17)
+  * initial release

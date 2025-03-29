@@ -172,10 +172,13 @@ end
 
 -- go through display string extracting any variables and
 -- substituting them for up-to-date values
-toks=strutil.TOKENIZER(settings.display, "$(|^(|@(|>(|)", "ms")
+toks=strutil.TOKENIZER(settings.display, "$(|^(|@(|>(|)|~a{|}", "ms")
 str=toks:next()
 while str ~= nil
 do
+if strutil.strlen(str) > 0
+then
+	-- these are various types of variable
   if str=="$(" or str=="^(" or str=="@(" or str==">("
   then
     str=toks:next()
@@ -183,13 +186,17 @@ do
     then 
       output=output .. display_translations:process(str, display_values[str])
     end
-  elseif strutil.strlen(str) and str ~= ")"
+  elseif str ~= ")"
   then
     output=output..str
   end
+end
   str=toks:next()
 end
 
+
+
+output=animations:process(output, lookup_counter)
 if string.find(output, '%(') ~= nil then io.stderr:write("ERR: ["..output.."]\n") end
 return output
 end

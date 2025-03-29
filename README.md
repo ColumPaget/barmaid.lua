@@ -157,9 +157,11 @@ freeswap         free swap in metric format
 totalswap        total swap in metric format
 bat:<num>        percentage remaining battery. This requires a battery number suffix, so `$(bat:1)` for the first battery
 bat:<num>:color  automatically colored swap usage (green/yellow/red) example: $(bat:1:color)
-charging:        returns the character '~' (to look like an 'AC' symbol) if battery is charging. Requires a battery number suffix
+charging:<num>   returns the character 'y' if battery is charging, 'n' otherwise. Requires a battery number suffix
 bats             info for all batteries. If no batteries present, this will be blank.
 bats:color       autocolored info for all batteries. If no batteries present, this will be blank.
+bats_life        remaining life of all batteries at current power draw.
+bats_life:color  remaining life of all batteries at current power draw (greem > 1hr, yellow > 0.5 hr, red below 3min)
 fs:<mount>       filesystem use percent. Requires a filesystem mount suffix, so `$(fs:/home)` for filesystem on /home
 load_percent     system percentage load/cpu usage
 load_percent:color    autocolored system percentage load/cpu usage
@@ -201,6 +203,8 @@ Barmaid supports unicode UTF8 output. Unicode symbols can be included by either:
 
 1) Unicode code-point value. so, for example "~U266B" displays a musical note symbol.
 2) Unicode glyph name. This requires a version of libUseful more recent than 4.38 and an '/etc/unicode-names.conf' file. This allows specifying unicode symbols via the notation: "~:music:"
+
+
 
 
 VALUE TRANSLATION
@@ -250,6 +254,41 @@ EXAMPLE:
 
 This allows mapping the value 'up' for different variables to different output strings (admittedly all of them green in color).
 
+
+
+
+ANIMATIONS
+==========
+
+Since barmaid v6.5 simple text animations are supported. They are defined as comma-seperated lists of strings like so:
+
+
+```
+~a{1,2,3,4}
+```
+
+This animation would count from 1 to 4 over and over. 
+
+These are normally used in Value Translations, for instance to have an animation that plays when a battery is charging.
+
+
+Clever use of selected chars can create text spinners, bubblers, etc
+
+
+```
+~a{\,|./,-}                               - classic 'spinner'
+~a{.,o.O}                                 - 'bubbler'
+~a{|---,-|--,--|-,---|,--|-,-|--,|---}    - line that sweeps back and forth
+```
+
+However a monospace font is usually needed for such animations to look good.
+
+
+Color codes like '~r' can be used in animations:
+
+```
+~a{~r-~0--,-~r-~0-,--~r-~0,-~r-~0-}       - 'knight rider' red bar that moves back and forth
+```
 
 
 MODULES

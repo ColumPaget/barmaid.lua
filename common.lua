@@ -7,12 +7,13 @@ require("terminal")
 require("sys")
 require("net")
 require("dataparser")
+require("hash")
 
 SHELL_OKAY=0
 SHELL_CLOSED=1
 SHELL_CLS=2
 
-version="6.4"
+version="6.5"
 settings={}
 lookup_counter=0
 lookup_values={}
@@ -39,3 +40,7 @@ thermal_color_map={
         {value=60, color="~r"},
         {value=80, color="~R"}
 }
+
+
+
+

@@ -8,7 +8,8 @@ local extn, str
 extn=filesys.extn(path)
 if extn==".xpm" then return path end 
 
-str=string.gsub(filesys.basename(path), extn, ".xpm")
+
+str=hash.hashstr(url, "md5", "ibase64") .. "-" .. string.gsub(filesys.basename(path), extn, ".xpm")
 cache_path=process.getenv("HOME") .. "/.local/share/cache/icons/" .. str
 if filesys.exists(cache_path) then return cache_path end
 
