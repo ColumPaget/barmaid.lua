@@ -15,11 +15,9 @@ function DBL_InterpretResponse(service, str)
 if str == nil then return false end
 
 if string.sub(str, 1, 12) == "127.255.255." then 
-io.stderr:write(service.." "..str.."\n")
 return false 
 end
 
-io.stderr:write("DBL ERROR\n")
 return true
 end
 
@@ -39,8 +37,6 @@ end
 lookup=lookup .. service
 str=net.lookupIP(lookup)
 
-if str ~= nil then io.stderr:write("dbllookup: "..str.."\n") end
-
 return DBL_InterpretResponse(service, str)
 end
 
@@ -54,7 +50,6 @@ then
 	service=toks:next()
 	while service ~= nil
 	do
-io.stderr:write("dbl: "..tostring(service).. " "..tostring(ip).."\n")
 	if DBL_Lookup(ip, service) == true then return true end
 	service=toks:next()
 	end

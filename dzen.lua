@@ -39,7 +39,10 @@ len=strutil.strlen(str)
 while i <= len
 do
   char=string.sub(str, i, i)
-  if char=="~" 
+  if char=="^"
+  then
+  outstr=outstr.."^^"
+  elseif char=="~" 
   then 
     i=i+1
     char=string.sub(str, i, i)    

@@ -15,7 +15,6 @@ str=string.sub(display_str, pos+10)
 pos=string.find(str, ")")
 if pos > 0 then str=string.sub(str, 1, pos-1) end
 
-print("mgr:" .. str)
 lookup_values.openvpn_mgr=str
 table.insert(lookups, self.lookup)
 end

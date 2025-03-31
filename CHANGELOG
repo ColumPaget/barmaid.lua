@@ -1,3 +1,10 @@
+v6.6 (2025-03-31)
+  * handle batteries/systems that don't have 'current_power'
+  * try estimating remaining battery from usage over time
+  * allow use of ^ character with dzen2 bars
+  * eliminate debugging code from modules
+  * implement 'make install' and 'make install_system'
+
 v6.5 (2025-03-29)
   * added simple 'animations'
   * add 'bat_life' value

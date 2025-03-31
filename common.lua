@@ -13,7 +13,7 @@ SHELL_OKAY=0
 SHELL_CLOSED=1
 SHELL_CLS=2
 
-version="6.5"
+version="6.6"
 settings={}
 lookup_counter=0
 lookup_values={}
