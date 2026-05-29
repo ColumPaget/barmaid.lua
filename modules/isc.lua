@@ -9,9 +9,10 @@ mod={}
 
 -- module init function, setup module and insert it into module table
 mod.init=function(self, lookups, display_str)
+
 if string.find(display_str, "$%(isc%)") ~= nil
 then
-	table.insert(lookups, self.lookup)
+	updater:add_mod(self)
 end
 
 end
@@ -22,18 +23,16 @@ end
 mod.lookup=function(self)
 local S, str
 
-if lookup_counter % 60 == 0
-then
 S=stream.STREAM("https://isc.sans.edu/infocon.txt", "r")
 if S ~= nil
 then
 	str=S:readln()
 	S:close()
-	if strutil.strlen(str) > 0 then display_values["isc"]=str end
-end
 
+	if strutil.strlen(str) > 0 then print("isc=" .. str) end
 end
 
 end
 
 table.insert(lookup_modules, mod)
+

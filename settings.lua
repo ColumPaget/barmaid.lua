@@ -2,9 +2,7 @@
 
 
 -- set intital value of all settings
-function SettingsInit()
-
-settings.display="~w$(day_name)~0 $(day) $(month_name) ~y$(time)~0 $(bats:color) fs:$(fs:/:color)%  mem:$(mem:color)% load:$(load_percent:color)% cputemp:$(cpu_temp:color)c ~y$(ip4address:default)~0"
+function SettingsDefaults()
 
 settings.config_files="~/.config/barmaid.lua/barmaid.conf:~/.config/barmaid.conf"
 settings.config_files=settings.config_files .. ":" .. "~/.barmaid.conf"
@@ -13,6 +11,7 @@ settings.modules_dir="/usr/local/lib/barmaid/:/usr/lib/barmaid:~/.local/lib/barm
 settings.datasock=""
 settings.win_width=800
 settings.win_height=40
+settings.updater_run=60 
 settings.font=""
 settings.output="default"
 settings.foreground=""
@@ -24,7 +23,7 @@ settings.icon_path=".:/usr/share/icons"
 --steal lines is lines to take from the terminal when acting as a terminal bar
 settings.steal_lines=0
 settings.datafeeds={}
-settings.onclicks={}
+settings.display_cycle_time=0
 settings.modsettings={}
 
 return settings
@@ -55,11 +54,14 @@ settings.length=GeometryStringNext(toks)
 end
 
 
+
 function LoadConfigFile(path)
 local S, str, name, value
 local retval=true
 
 if strutil.strlen(path) ==0 then return false end
+
+print("LOAD: ["..path.."]")
 
 if string.sub(path, 1, 1) == "~" then path=process.getenv("HOME") .. string.sub(path, 2) end
 
@@ -81,7 +83,7 @@ do
 
   if name=="display" or name=="display-string"
   then 
-    settings.display=value
+    display:add(value)
   elseif name=="xpos"
   then
     settings.xpos=value
@@ -130,9 +132,12 @@ do
   elseif name=="datasock"
   then
     settings.datasock=value
+  elseif name=="display_cycle_time"
+  then
+    settings.display_cycle_time=tonumber(value)
   elseif name=="onclick"
   then
-    OnClickAdd(value)
+    onclicks:add(value, display:count())
   end
   end
   str=S:readln()
@@ -191,6 +196,9 @@ do
   elseif str=="-t" or str=="-type" then
     settings.output=args[i+1]
     args[i+1]=""
+  elseif str=="-C" or str=="-cycle" then
+    settings.display_cycle_time=tonumber(args[i+1])
+    args[i+1]=""
   elseif str=="-fn" or str=="-font" then
     settings.font=args[i+1]
     args[i+1]=""
@@ -227,7 +235,7 @@ do
     args[i+1]=""
   elseif str=="-onclick"
   then
-    OnClickAdd(args[i+1])
+    onclicks:add(args[i+1], display:count())
     args[i+1]=""
   elseif str=="-help-colors" or str=="--help-colors" or str=="-help-colours"
   then
@@ -255,7 +263,7 @@ do
     DisplayHelp()
   elseif strutil.strlen(args[i]) > 0
   then
-    settings.display=args[i]
+    display:add(args[i])
   end  
 
 end
@@ -266,3 +274,26 @@ SelectOutput(settings)
 
 end
 
+
+
+function SettingsInit()
+
+-- load some initial settings defaults
+SettingsDefaults()
+
+-- init display_translations system
+display_translations=DisplayTranslations()
+
+-- parse command-line, then load config files (which might have been specified on command-line)
+-- then parse command-line again because we want command-line options to override config-files
+ParseCommandLineConfigFiles(arg)
+LoadConfigFiles()
+ParseCommandLine(arg)
+
+-- add default 'display string' if none have been added by config file or command line
+if display.display_list_size == 0
+then
+display:add("~w$(day_name)~0 $(day) $(month_name) ~y$(time)~0 $(bats:color) fs:$(fs:/:color)%  mem:$(mem:color)% load:$(load_percent:color)% cputemp:$(cpu_temp:color)c ~y$(ip4address:default)~0")
+end
+
+end

@@ -1,20 +1,31 @@
 -- functions related to the DZen2 x11 desktop bar
 
+function DZenFormatOnClick(button, command)
+local str=""
+
+str="^ca("..button.."," .. command .. ")" 
+
+return str
+end
+
+
 function DZenStartOnClick(onclick_counter)
 local item
 local count=0
 local str=""
 
-item=OnClickGet(onclick_counter)
+item=onclicks:get(display:curr_num(), onclick_counter)
 if item ~= nil
 then
-      if strutil.strlen(item.left) > 0 then str=str.."^ca(1," .. item.left .. ")" ; count=count+1 end
-      if strutil.strlen(item.middle) > 0 then str=str.."^ca(2," .. item.middle .. ")" ; count=count+1 end
-      if strutil.strlen(item.right) > 0 then str=str.."^ca(3," .. item.right .. ")" ; count=count+1 end
+      if strutil.strlen(item.left) > 0 then str=str .. DZenFormatOnClick(1, item.left) ; count=count+1 end
+      if strutil.strlen(item.middle) > 0 then str=str .. DZenFormatOnClick(2, item.middle) ; count=count+1 end
+      if strutil.strlen(item.right) > 0 then str=str .. DZenFormatOnClick(3, item.right) ; count=count+1 end
 end
 
 return str, count
 end
+
+
 
 function DZenCloseOnClick(buttons)
 local i
@@ -28,11 +39,15 @@ end
 return str
 end
 
+
+
+
+
 function DZenTranslateColorStrings(str)
 local outstr=""
 local i=1
 local len, char, val, item
-local onclick_counter=1
+local onclick_counter=0
 local buttons=0
 
 len=strutil.strlen(str)
@@ -61,6 +76,10 @@ do
     elseif char=="C" then outstr=outstr.."^bg(cyan)"
     elseif char=="W" then outstr=outstr.."^bg(white)"
     elseif char=="~" then outstr=outstr.."~"
+    elseif char==">"
+		then
+		i,item=StringExtract(str, i + 2, "}")
+		outstr=outstr .. "^pa(" .. item .. ")"
     elseif char=="i"
     then
       i,item=TranslateClipImagePath(str, i)
@@ -70,7 +89,7 @@ do
       item,buttons=DZenStartOnClick(onclick_counter)
       outstr=outstr .. item
       onclick_counter=onclick_counter+1
-     elseif char=="}"
+    elseif char=="}"
     then 
       outstr=outstr .. DZenCloseOnClick(buttons)
       buttons=0
@@ -87,3 +106,19 @@ return(outstr)
 end
 
 
+
+function DZenLaunch(xpos, ypos)
+local str
+
+  str="cmd:dzen2 -x " .. xpos .. " -w " .. settings.win_width 
+  if strutil.strlen(settings.ypos) > 0 then str=str .. " -y ".. settings.ypos end
+  if strutil.strlen(settings.align) > 0 then str=str .. " -ta " .. settings.align end
+  if strutil.strlen(settings.font) > 0 then str=str .. " -fn '" .. settings.font .. "'" end
+  if strutil.strlen(settings.foreground) > 0 then str=str .. " -fg '" .. settings.foreground .. "'" end
+  if strutil.strlen(settings.background) > 0 then str=str .. " -bg '" .. settings.background .. "'" end
+  str=str .. " -e 'button3=print:cycle_display'"
+  S=stream.STREAM(str, "rw stderr2null")
+
+print("LAUNCH: "..str)
+return S
+end

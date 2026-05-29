@@ -173,6 +173,7 @@ ip4interface:    requires the suffix 'default', so 'ip4interface:default' return
 ip4address:      ip4address. Requires a network interface suffix, e.g. `$(ip4address:eth0)` or `$(ip4address:default)` for ip address on default-route interface
 ip4netmask:      ip4netmask. Requires a network interface suffix, e.g. `$(ip4netmask:eth0)``$(ip4netmask:default)` for ip netmask on default-route interface
 ip4broadcast:    ip4broadcast. Requires a network interface suffix, e.g. `$(ip4broadcast:eth0)`
+ip4gateway       default gateway for ipv4
 up:<host>:<port> connect to service at 'host' and 'port'. display 'up' if connection succeeds, 'down' if not
 dns:<host>       lookup 'host' and return its IP address              
 dnsup:<host>     lookup 'host' and return 'up' if a value is returned 'down' if not
@@ -319,13 +320,16 @@ By default barmaid looks for config files in `~/.config/barmaid.lua/barmaid.conf
 ```
 The config file contains entries of the form:                                                                                      
 
-```                                                                                                                                  <config type> <value>                                                                                                            ```  
+```
+  <config type> <value>
+```  
 
 Possible config types are:
 
 ```
-display            string to be displayed in the bar
-display-string     string to be displayed in the bar
+display              string to be displayed in the bar (multiple can be configured and cycled through)
+display-string       string to be displayed in the bar (multiple can be configured and cycled through)
+display_cycle_time   when multiple display strings are configured, cycle between them at interval defined in seconds
 output             output type, 'dzen2', 'lemonbar', 'dwm', etc
 outtype            output type, 'dzen2', 'lemonbar', 'dwm', etc
 xpos               x-position, can be 'left', 'right', 'center' or a pixel-position
@@ -350,6 +354,118 @@ onclick            configure an 'onclick' (see --help-onclick)
 ```
 
 An example config file is supplied with the program code
+
+
+
+DISPLAY STRINGS
+===============
+
+The 'display' or 'display-string' options in the config file set the string to be displayed. These can contain variables that are substituted with values gathered from the system, and formatting strings that effect colors, positioning and clickable areas. Variables have the form "$(name)" and formatting strings start with '~'.
+
+The variable values come in two types, plain, and auto-colored. Auto-colored values change color depending on the level of the value
+
+Available plain values are:
+
+```
+time           display time as %H:%M:%S
+date           display date as %Y/%m/%d
+day_name       display 3-letter day name (Sun, Mon, Tues...)
+month_name     display 3-letter month name
+hour
+minutes
+seconds
+year
+month
+day
+tztime:<zone>  time in timezone 'zone'
+tzdate:<zone>  date in timezone 'zone'
+hostname       system hostname
+arch           system architecture
+os             system os type
+kernel         kernel version number
+uptime         system uptime in $H:%M:%S
+cpu_count      number of cpus
+cpu_temp       cpu temperature in celsius. Currently only works on systems that have x86_pkg_temp or coretemp type sensors. For multicore systems displays the highest across all CPUs.
+mem            percent memory usage
+memuse         percent memory usage calculated from 'availmem' (see discussion below for difference to 'mem')
+usedmem        used memory in metric format
+freemem        free memory in metric format
+availmem       available memory in metric format (see below on difference to freemem)
+totalmem       total memory in metric format
+cachedmem      cached memory in metric format, this can include ramdisks etc
+swap           percent swap space usage
+usedswap       used swap in metric format
+freeswap       free swap in metric format
+totalswap      total swap in metric format
+bat:           percentage remaining battery. This requires a battery number suffix, so `$(bat:0)` for the first battery
+charging:      returns the character '~' (to look like an 'AC' symbol) if battery is charging. Requires a battery number suffix
+bats           info for all batteries. If no batteries present, this will be blank.
+fs:            filesystem use percent. Requires a filesystem mount suffix, so `$(fs:/home)` for filesystem on /home
+ip4address:    ip4address. Requires a network interface suffix, e.g. `$(ip4address:eth0)`
+ip4netmask:    ip4address. Requires a network interface suffix, e.g. `$(ip4address:eth0)`
+ip4broadcast:  ip4address. Requires a network interface suffix, e.g. `$(ip4address:eth0)`
+load_percent   system percentage load (instantaneous cpu usage)
+load           system load (instantaneous cpu usage) in 'top' format
+load1min       1min  load in 'top' format
+load5min       5min  load in 'top' format
+load15min      15min load in 'top' format
+```
+
+Available auto-colored values are:
+
+```
+cpu_temp:color         cpu temperature in celsius. Currently only works on systems that have x86_pkg_temp or coretemp type sensors. For multicore systems displays the highest across all CPUs.
+cpu_freq:<cpuid>       cpu frequency for a specific cpu. <cpuid> has the form 'cpu0', 'cpu1' etc
+cpu_freq:avg           average cpu frequency across all cpus
+mem:color              percent memory usage
+memuse:color           percent memory usage using 'availmem' (see discussion below for difference from 'mem')
+free:color             percent memory free
+avail:color            percent memory available (see discussion below for difference from free)
+cmem:color             percent of memory that is cache
+swap:color             percent swap space usage
+usedswap:color         used swap in metric format
+freeswap:color         free swap in metric format
+totalswap:color        total swap in metric format
+bat:<name>:color       percentage remaining battery. This requires a battery number suffix, so `$(bat:0)` for the first battery
+bats:color             info for all batteries. If no batteries present, this will be blank.
+bats_life              remaining life of all batteries at current power draw.
+bats_life:color        remaining life of all batteries at current power draw (greem > 1hr, yellow > 0.5 hr, red below 3min)
+fs:<path>:color        filesystem use percent. Requires a filesystem mount suffix, so `$(fs:/home)` for filesystem on /home
+load_percent:color     system percentage load (instantaneous cpu usage)
+load:color             system load (instantaneous cpu usage) in 'top' format
+load1min:color         1min  load in 'top' format
+load5min:color         5min  load in 'top' format
+load15min:color        15min load in 'top' format
+up:<host>:<port>       connect to service at 'host' and 'port'. display 'up' if connection succeeds, 'down' if not
+dns:<host>             lookup 'host' and return its IP address
+dnsup:<host>           lookup 'host' and return 'up' if a value is returned 'down' if not
+```
+
+Available formatting strings are:
+
+```
+~w  white foreground
+~n  black foreground
+~b  blue foreground
+~c  cyan foreground
+~g  green foreground
+~y  yellow foreground
+~m  magenta foreground
+~r  red foreground
+~W  white background
+~N  black background
+~B  blue background
+~C  cyan background
+~G  green background
+~Y  yellow background
+~M  magenta background
+~R  red background
+~>{pixels} position following text 'pixels' into the bar (currently only with dzen2 bars)
+~i{path}   display image file at path (default xpm, but can display jpeg and png images provided imagemagik 'convert' is installed)
+~{click~}  define a clickable area
+~0  reset to default color
+```
+
 
 
 

@@ -13,7 +13,7 @@ SHELL_OKAY=0
 SHELL_CLOSED=1
 SHELL_CLS=2
 
-version="6.6"
+version="7.0"
 settings={}
 lookup_counter=0
 lookup_values={}
@@ -41,6 +41,23 @@ thermal_color_map={
         {value=80, color="~R"}
 }
 
+
+function StringExtract(input, start, end_char)
+local i, char
+local output=""
+
+i=start
+
+while i < strutil.strlen(input)
+do
+  char=string.sub(input, i, i)
+	if char == end_char then break end
+	output=output..char
+	i=i+1
+end
+
+return i, output
+end
 
 
 

@@ -7,6 +7,10 @@ get put in a list and called as functions in that list
 
 batteries={
 
+
+low_battery_level=10,
+
+
 read_battery =function(self, name, path)
 local bat={}
 
@@ -82,49 +86,58 @@ end
 
 if fill ~= nil and draw ~= nil
 then
-  AddDisplayValue(name .. ":life", fill / draw, "%.2f", nill)
+  display:add_value(name .. ":life", fill / draw, "%.2f", nill)
 end
 
 return fill, draw
 end,
 
 
+
+check_bats_low=function(self, total_amount, prev_amount)
+
+if total_amount < self.low_battery_level then display:add_alert("low battery alert", "~R~w     LOW BATTERY     ~0") end
+
+end,
+
+
 process_total_life=function(self, total_fill, total_draw)
-local nowcs, val, draw_cs, duration_cs
+local nowcs, draw_cs, duration_cs, total_amount
 
 now_cs=time.centisecs()
 
 -- milliWattHours divided by milliWatts gives Hours
-if total_draw > 0 then val=total_fill / total_draw
+if total_draw > 0 then total_amount=total_fill / total_draw
 -- charge / current can be more troublesome
 elseif self.prev_fill ==nil 
 then
-self.prev_fill=total_fill
-self.prev_cs=now_cs
+  self.prev_fill=total_fill
+  self.prev_cs=now_cs
 elseif self.prev_fill ~= total_fill
 then
--- charge is in mAh, calculate draw per centisec
-duration_cs=now_cs - self.prev_cs
-draw_cs = (self.prev_fill - total_fill) / duration_cs
--- convert to draw per hour
-total_draw=draw_cs * 100 * 3600 
-if total_draw > 0 then val=total_fill / total_draw end
-self.prev_fill=total_fill
-self.prev_cs=now_cs
+  -- charge is in mAh, calculate draw per centisec
+  duration_cs=now_cs - self.prev_cs
+  draw_cs = (self.prev_fill - total_fill) / duration_cs
+
+  -- convert to draw per hour
+  total_draw=draw_cs * 100 * 3600 
+  if total_draw > 0 then total_amount=total_fill / total_draw end
+  self.prev_fill=total_fill
+  self.prev_cs=now_cs
 end
 
 
-if val ~= nil
+if total_amount ~= nil
 then
-   display_values["bats_life"]=self:fmt_life(val)
+   display_values["bats_life"]=self:fmt_life(total_amount)
    
-   if val > 1.0 then prefix="~g"
-   elseif val > 0.5 then prefix="~y"
-   elseif val > 0.1 then prefix="~r"
+   if total_amount > 1.0 then prefix="~g"
+   elseif total_amount > 0.5 then prefix="~y"
+   elseif total_amount > 0.1 then prefix="~r"
    else prefix="~R~w"
    end
-   
-   display_values["bats_life:color"]=prefix .. self:fmt_life(val) .."~0"
+
+   display_values["bats_life:color"]=prefix .. self:fmt_life(total_amount) .."~0"
 end
 
 
@@ -133,6 +146,8 @@ end,
 
 process=function(self)
 local bats, batnum, i, bat, perc, val, prefix, fill, draw
+local total_charge=0
+local total_max=0
 local total_fill=0
 local total_draw=0
 local bats_str=""
@@ -161,7 +176,8 @@ do
     perc=0
 		end
   end
-  AddDisplayValue(name, perc, "%d", color_map)
+
+  display:add_value(name, perc, "%d", color_map)
   bats_str=bats_str .. name..":"..display_values[name].."%"
   bats_str_color=bats_str_color .. name..":"..display_values[name..":color"].."%"
 
@@ -171,14 +187,22 @@ do
   fill,draw=self:calc_life(bat)
   if fill ~= nil then total_fill=total_fill + fill end
   if draw ~= nil then total_draw=total_draw + draw end
+	if bat.charge ~= nil then total_charge=total_charge + bat.charge end
+	if bat.max ~= nil then total_max=total_max + bat.max end
 end
 
 display_values["bats"]=bats_str
 display_values["bats:color"]=bats_str_color
 
+perc=math.floor((total_charge * 100 / total_max) + 0.5)
+self:check_bats_low(perc, self.prev_perc)
+self.prev_perc=perc
+
 self:process_total_life(total_fill, total_draw)
 end
 }
+
+
 
 function LookupBatteries()
 batteries:process()

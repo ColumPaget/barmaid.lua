@@ -60,29 +60,14 @@ end
 
 
 function OpenOutput(settings)
-local width, height, xpos, S
+local xpos, S
 local str=""
 
+
 xpos=X11TranslateXPos(settings) 
-if settings.output=="dzen2"
-then
-  str="cmd:dzen2 -x " .. xpos .. " -w " .. settings.win_width 
-  if strutil.strlen(settings.ypos) > 0 then str=str .. " -y ".. settings.ypos end
-  if strutil.strlen(settings.align) > 0 then str=str .. " -ta " .. settings.align end
-  if strutil.strlen(settings.font) > 0 then str=str .. " -fn '" .. settings.font .. "'" end
-  if strutil.strlen(settings.foreground) > 0 then str=str .. " -fg '" .. settings.foreground .. "'" end
-  if strutil.strlen(settings.background) > 0 then str=str .. " -bg '" .. settings.background .. "'" end
-  S=stream.STREAM(str)
-elseif settings.output=="lemonbar"
-then
-  str="cmd:lemonbar -g " .. settings.win_width .. "x"..settings.win_height.."+"..xpos.."+0"
-  if strutil.strlen(settings.font) > 0 then str=str .. " -f '" .. settings.font .. "'" end
-  if strutil.strlen(settings.foreground) > 0 then str=str .. " -F '" .. settings.foreground .. "'" end
-  if strutil.strlen(settings.background) > 0 then str=str .. " -B '" .. settings.background .. "'" end
-  S=stream.STREAM(str)
-elseif settings.output=="xterm" -- put bar in xterm title by wrapping terminal
-then
-  S=TerminalWrap(settings.steal_lines)
+if settings.output=="dzen2" then S=DZenLaunch(xpos, settings.ypos)
+elseif settings.output=="lemonbar" then S=LemonbarLaunch(xpos, settings.ypos)
+elseif settings.output=="xterm" then S=TerminalWrap(settings.steal_lines)
 else 
   if settings.ypos=="bottom" --put bar at bottom of screen, wrap terminal
   then
@@ -93,13 +78,17 @@ else
   end
 end
 
+if S ~= nil then poll_streams:add(S) end
+
+
 return S
 end
 
 
-function ProcessBarProgramOutput(str)
-str=strutil.trim(str)
-if string.sub(str, 1, 6) == "reload" then KvReloadCounter(string.sub(str, 8)) end
-if settings.output=="lemonbar" then LemonbarProcessClick(str) end
-end
 
+function ProcessBarProgramOutput(str)
+  str=strutil.trim(str)
+  if string.sub(str, 1, 6) == "reload" then KvReloadCounter(string.sub(str, 8)) end
+  if string.sub(str, 1, 13) == "cycle_display" then display:cycle(); lookup_counter=0; display:alerts_clear() end
+  if settings.output=="lemonbar" then LemonbarProcessClick(str) end
+end

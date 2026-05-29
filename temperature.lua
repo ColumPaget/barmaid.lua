@@ -13,7 +13,7 @@ do
   then
     str=SysFSReadFile(path.."/temp")
     val=tonumber(str) / 1000.0
-    AddDisplayValue("cpu_temp", val, "% 3.1f", thermal_color_map)
+    display:add_value("cpu_temp", val, "% 3.1f", thermal_color_map)
   end
   path=Glob:next()
 end
@@ -51,7 +51,7 @@ do
   str=SysFSReadFile(path.."/name")
   if str == "coretemp"
   then
-    AddDisplayValue("cpu_temp", LookupCoreTemp(path), nil, thermal_color_map)
+    display:add_value("cpu_temp", LookupCoreTemp(path), nil, thermal_color_map)
   end
   end
 

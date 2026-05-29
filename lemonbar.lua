@@ -6,7 +6,7 @@ local item
 local count=0
 local str=""
 
-item=OnClickGet(onclick_counter)
+item=onclicks:get(onclick_counter)
 if item ~= nil
 then
       if strutil.strlen(item.left) > 0 then str=str.."%{A:" .. string.format("click=%d", onclick_counter) .. ":}" ; count=count+1 end
@@ -37,17 +37,17 @@ local val, item
 if string.sub(str, 1, 6) == "click="
 then
   val=tonumber(string.sub(str, 7))
-  item=OnClickGet(val, "left")
+  item=onclicks:get(val, "left")
   if item ~= nil then process.spawn(item) end
 elseif string.sub(str, 1, 7) == "click2="
 then
   val=tonumber(string.sub(str, 8))
-  item=OnClickGet(val, "middle")
+  item=onclicks:get(val, "middle")
   if item ~= nil then process.spawn(item) end
 elseif string.sub(str, 1, 7) == "click3="
 then
   val=tonumber(string.sub(str, 8))
-  item=OnClickGet(val, "right")
+  item=onclicks:get(val, "right")
   if item ~= nil then process.spawn(item) end
 end
 
@@ -97,8 +97,8 @@ do
       onclick_counter=onclick_counter+1
     elseif char=="}"
     then 
-	LemonbarCloseOnClick(buttons)
-	buttons=0
+      LemonbarCloseOnClick(buttons)
+      buttons=0
     else outstr=outstr..char
     end
   elseif char=="%" then outstr=outstr.."%%"
@@ -112,3 +112,15 @@ return(outstr)
 end
 
 
+
+function LemonbarLaunch(xpos, ypos)
+local str, S
+
+  str="cmd:lemonbar -g " .. settings.win_width .. "x"..settings.win_height.."+"..xpos.."+0"
+  if strutil.strlen(settings.font) > 0 then str=str .. " -f '" .. settings.font .. "'" end
+  if strutil.strlen(settings.foreground) > 0 then str=str .. " -F '" .. settings.foreground .. "'" end
+  if strutil.strlen(settings.background) > 0 then str=str .. " -B '" .. settings.background .. "'" end
+  S=stream.STREAM(str, "rw stderr2null")
+
+return S
+end

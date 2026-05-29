@@ -13,6 +13,7 @@ local str, glob
   end
 end
 
+
 function LoadModules()
 local toks, path
 
@@ -26,5 +27,6 @@ do
   if LoadModulesFromDir(path) then break end
   path=toks:next()
 end
+
 end
 

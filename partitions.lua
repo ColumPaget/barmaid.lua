@@ -1,10 +1,10 @@
 -- functions related to lookups of filesystems/partitions 
 
-function LookupPartitionsGetList()
+function LookupPartitionsGetList(fmt_str)
 local toks, str
 local parts={}
 
-toks=strutil.TOKENIZER(settings.display, "$(|^(|:|)", "ms")
+toks=strutil.TOKENIZER(fmt_str, "$(|^(|:|)", "ms")
 str=toks:next()
 while str ~= nil
 do
@@ -42,13 +42,13 @@ return nil
 end
 
 
-function LookupPartitions()
+function LookupPartitions(fmt_str)
 local str, perc
 local fs_mount
 local S, requested_partitions
 
+requested_partitions=LookupPartitionsGetList(fmt_str)
 
-requested_partitions=LookupPartitionsGetList()
 
 S=stream.STREAM("/proc/self/mounts", "r")
 if S ~= nil
@@ -61,7 +61,7 @@ then
     if fs_mount ~= nil
     then
       perc=math.floor( (filesys.fs_used(fs_mount) * 100 / filesys.fs_size(fs_mount)) + 0.5)
-      AddDisplayValue("fs:"..fs_mount, perc, nil, usage_color_map)
+      display:add_value("fs:"..fs_mount, perc, nil, usage_color_map)
     end
 
   str=S:readln()

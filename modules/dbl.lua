@@ -9,20 +9,21 @@
 --service list. You can add extra services here
 proc=nil
 
+mod_dbl={
 
-function DBL_InterpretResponse(service, str)
+interpret_response=function(self, service, str)
 
-if str == nil then return false end
+if strutil.strlen(str) == 0 then return false end
 
 if string.sub(str, 1, 12) == "127.255.255." then 
 return false 
 end
 
 return true
-end
+end, 
 
 
-function DBL_Lookup(ip, service)
+lookup_ip_in_dbl=function(self, ip, service)
 local toks, str
 local lookup=""
 
@@ -37,11 +38,11 @@ end
 lookup=lookup .. service
 str=net.lookupIP(lookup)
 
-return DBL_InterpretResponse(service, str)
-end
+return self:interpret_response(service, str)
+end,
 
 
-function DBL_ProcessServices(ip)
+process_services=function(self, ip)
 local i, service
 
 if settings.modsettings["module:dbl:services"] ~= nil
@@ -50,59 +51,41 @@ then
 	service=toks:next()
 	while service ~= nil
 	do
-	if DBL_Lookup(ip, service) == true then return true end
+	if self:lookup_ip_in_dbl(ip, service) == true then return true end
 	service=toks:next()
 	end
 end
 
 return false
-end
+end,
 
 
-function DBL_ProcessLookups()
-local i, ip
+lookup=function(self)
+local i, ip, str
 
 for i,ip in ipairs(lookup_values.dbl_ip_list)
 do
-	if DBL_ProcessServices(string.sub(ip, 5)) == true 
-	then 
-		io.stdout:write(ip.."=yes\n")
-		io.stdout:flush()
-	else
-		io.stdout:write(ip.."=no\n")
-		io.stdout:flush()
+	str=ip
+	if self:process_services(string.sub(ip, 5)) == true then str=str .. "=yes\n"
+	else str=str .. "=no\n"
 	end
+
+	print(str)
 end
 
-end
+end,
 
 
-function DBL_Process()
 
-
-if lookup_counter % 360 == 0
-then
-	proc=process.PROCESS("")
-	if proc ==nil
-	then
-		DBL_ProcessLookups()
-		os.exit()
-	else
-		poll_streams:add(proc:get_stream())
-	end
-end
-end
-
-
-function DBL_Init(self, lookups, display_str)
+init=function(self, lookups, display_str)
 local var_names, i, var
 
 if settings.modsettings["module:dbl:services"] == nil
 then
-	settings.modsettings["module:dbl:services"]="bl.spamcop.net,sbl.spamhaus.org,virus.rbl.jp,cbl.abuseat.org,dyna.spamrats.com,b.barracudacentral.org"
+	settings.modsettings["module:dbl:services"]="bl.spamcop.net,zen.spamhaus.org,virus.rbl.jp,cbl.abuseat.org,b.barracudacentral.org"
 end
 
-var_names=GetDisplayVars(display_str)
+var_names=display:get_vars(display_str)
 for i, var in ipairs(var_names)
 do
 
@@ -122,11 +105,8 @@ do
 
 end
 
-if lookup_values.dbl_ip_list ~= nil then table.insert(lookups, self.lookup) end
+if lookup_values.dbl_ip_list ~= nil then updater:add_mod(self) end
 end
+}
 
-
-mod={}
-mod.lookup=DBL_Process
-mod.init=DBL_Init
-table.insert(lookup_modules, mod)
+table.insert(lookup_modules, mod_dbl)

@@ -4,7 +4,7 @@ function X11GetRootGeometry()
 local S, line, wid, high
 local geom=""
 
-S=stream.STREAM("cmd:xwininfo -root")
+S=stream.STREAM("cmd:xwininfo -root", "rw stderr2null")
 line=S:readln()
 while line ~= nil
 do

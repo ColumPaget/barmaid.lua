@@ -1,19 +1,40 @@
 -- functions related to lookups of network values like ip addresses, default gateway, etc
 
+ip4network={
 
-function LookupDefaultRouteIfaceParse(str) 
+hextoip=function(self, hex)
+local str, ip
+
+str=string.sub(hex, 7, 8)
+ip=tostring(tonumber( str, 16)) .. "."
+
+str=string.sub(hex, 5, 6)
+ip=ip .. tostring(tonumber( str, 16)) .. "."
+
+str=string.sub(hex, 3, 4)
+ip=ip .. tostring(tonumber( str, 16)) .. "."
+
+str=string.sub(hex, 1, 2)
+ip=ip .. tostring(tonumber( str, 16))
+
+return ip
+end,
+
+
+route_parse=function(self, str) 
 local toks
-local iface, route
+local iface, route, gateway
 
 toks=strutil.TOKENIZER(str, "\\S")
 iface=toks:next()
 route=toks:next()
+gateway=self:hextoip(toks:next())
 
-return iface, route
-end
+return iface, route, gateway
+end,
 
 
-function LookupDefaultRouteIface()
+default_route=function(self)
 local S, str, iface, dest
 
 S=stream.STREAM("/proc/net/route", "r")
@@ -23,11 +44,11 @@ then
   str=S:readln()
   while str ~= nil
   do
-    iface,dest=LookupDefaultRouteIfaceParse(str) 
+    iface,dest,gateway=self:route_parse(str) 
     if dest == "00000000" 
     then 
-  S:close()
-  return iface 
+      S:close()
+      return iface,gateway 
     end
     str=S:readln()
   end
@@ -35,13 +56,13 @@ end
 
 S:close()
 return nil
-end
+end,
 
 
-function LookupIPv4()
-local iface, toks, default_iface
 
-default_iface=LookupDefaultRouteIface()
+lookup_interfaces=function(self, default_iface)
+local toks, iface
+
 toks=strutil.TOKENIZER(sys.interfaces(), " ")
 iface=toks:next()
 while iface ~= nil
@@ -55,7 +76,6 @@ then
 
   if iface == default_iface
   then
-  display_values["ip4interface:default"]=iface
   display_values["ip4address:default"]=sys.ip4address(iface)
   display_values["ip4netmask:default"]=sys.ip4netmask(iface)
   display_values["ip4broadcast:default"]=sys.ip4broadcast(iface)
@@ -63,6 +83,43 @@ then
 end
 
 iface=toks:next()
+end
+
+end
+
+}
+
+
+
+function LookupIPv4(fmt_str)
+local iface, toks, str, default_iface, default_gateway
+local get_external_ip=false
+local get_ip4=false
+
+toks=strutil.TOKENIZER(fmt_str, "$(|^(|:|)", "ms")
+str=toks:next()
+while str ~= nil
+do
+  if str == "ip4external" then get_external_ip=true
+  elseif string.sub(str, 1, 3) == "ip4" then get_ip4=true
+  end
+str=toks:next()
+end
+
+if get_external_ip == true 
+then 
+--if lookup_counter % 30 == 0 then display_values["ip4external"]=net.externalIP() end
+end
+
+if get_ip4 == true
+then
+default_iface,default_gateway=ip4network:default_route()
+
+display_values["ip4interface:default"]=default_iface
+display_values["ip4gateway:default"]=default_gateway
+display_values["ip4gateway"]=default_gateway
+
+ip4network:lookup_interfaces(default_iface)
 end
 
 end

@@ -10,13 +10,12 @@
 
 
 mod={}
-table.insert(lookup_modules, mod)
 
 -- module init function, setup module and insert it into module table
 mod.init=function(self, lookups, display_str)
 if string.find(display_str, "$%(mi5%)") ~= nil
 then
-        table.insert(lookups, self.lookup)
+updater:add_mod(self)
 end
 
 end
@@ -27,8 +26,6 @@ end
 mod.lookup=function(self)
 local S, P, I, name, str
 
-if lookup_counter % 60 == 0
-then
 S=stream.STREAM( "https://www.mi5.gov.uk/UKThreatLevel/UKThreatLevel.xml", "r User-Agent=barmaid.lua")
 if S ~= nil
 then
@@ -51,12 +48,12 @@ then
 		if strutil.strlen(str) > 22 
 		then 
 			str=string.sub(str, 23) 
-			display_values["mi5"]=strutil.trim(str)
+			print("mi5=" .. strutil.trim(str))
 		end
 	end
 
 end
-end
 
 end
 
+table.insert(lookup_modules, mod)

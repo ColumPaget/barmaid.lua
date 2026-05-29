@@ -13,7 +13,7 @@ SHELL_OKAY=0
 SHELL_CLOSED=1
 SHELL_CLS=2
 
-version="6.6"
+version="7.0"
 settings={}
 lookup_counter=0
 lookup_values={}
@@ -41,6 +41,23 @@ thermal_color_map={
         {value=80, color="~R"}
 }
 
+
+function StringExtract(input, start, end_char)
+local i, char
+local output=""
+
+i=start
+
+while i < strutil.strlen(input)
+do
+  char=string.sub(input, i, i)
+	if char == end_char then break end
+	output=output..char
+	i=i+1
+end
+
+return i, output
+end
 
 
 
@@ -212,21 +229,32 @@ end
 
 -- functions related to the DZen2 x11 desktop bar
 
+function DZenFormatOnClick(button, command)
+local str=""
+
+str="^ca("..button.."," .. command .. ")" 
+
+return str
+end
+
+
 function DZenStartOnClick(onclick_counter)
 local item
 local count=0
 local str=""
 
-item=OnClickGet(onclick_counter)
+item=onclicks:get(display:curr_num(), onclick_counter)
 if item ~= nil
 then
-      if strutil.strlen(item.left) > 0 then str=str.."^ca(1," .. item.left .. ")" ; count=count+1 end
-      if strutil.strlen(item.middle) > 0 then str=str.."^ca(2," .. item.middle .. ")" ; count=count+1 end
-      if strutil.strlen(item.right) > 0 then str=str.."^ca(3," .. item.right .. ")" ; count=count+1 end
+      if strutil.strlen(item.left) > 0 then str=str .. DZenFormatOnClick(1, item.left) ; count=count+1 end
+      if strutil.strlen(item.middle) > 0 then str=str .. DZenFormatOnClick(2, item.middle) ; count=count+1 end
+      if strutil.strlen(item.right) > 0 then str=str .. DZenFormatOnClick(3, item.right) ; count=count+1 end
 end
 
 return str, count
 end
+
+
 
 function DZenCloseOnClick(buttons)
 local i
@@ -240,11 +268,15 @@ end
 return str
 end
 
+
+
+
+
 function DZenTranslateColorStrings(str)
 local outstr=""
 local i=1
 local len, char, val, item
-local onclick_counter=1
+local onclick_counter=0
 local buttons=0
 
 len=strutil.strlen(str)
@@ -273,6 +305,10 @@ do
     elseif char=="C" then outstr=outstr.."^bg(cyan)"
     elseif char=="W" then outstr=outstr.."^bg(white)"
     elseif char=="~" then outstr=outstr.."~"
+    elseif char==">"
+		then
+		i,item=StringExtract(str, i + 2, "}")
+		outstr=outstr .. "^pa(" .. item .. ")"
     elseif char=="i"
     then
       i,item=TranslateClipImagePath(str, i)
@@ -282,7 +318,7 @@ do
       item,buttons=DZenStartOnClick(onclick_counter)
       outstr=outstr .. item
       onclick_counter=onclick_counter+1
-     elseif char=="}"
+    elseif char=="}"
     then 
       outstr=outstr .. DZenCloseOnClick(buttons)
       buttons=0
@@ -299,6 +335,22 @@ return(outstr)
 end
 
 
+
+function DZenLaunch(xpos, ypos)
+local str
+
+  str="cmd:dzen2 -x " .. xpos .. " -w " .. settings.win_width 
+  if strutil.strlen(settings.ypos) > 0 then str=str .. " -y ".. settings.ypos end
+  if strutil.strlen(settings.align) > 0 then str=str .. " -ta " .. settings.align end
+  if strutil.strlen(settings.font) > 0 then str=str .. " -fn '" .. settings.font .. "'" end
+  if strutil.strlen(settings.foreground) > 0 then str=str .. " -fg '" .. settings.foreground .. "'" end
+  if strutil.strlen(settings.background) > 0 then str=str .. " -bg '" .. settings.background .. "'" end
+  str=str .. " -e 'button3=print:cycle_display'"
+  S=stream.STREAM(str, "rw stderr2null")
+
+print("LAUNCH: "..str)
+return S
+end
 -- functions related to the lemonbar x11 desktop bar
 
 
@@ -307,7 +359,7 @@ local item
 local count=0
 local str=""
 
-item=OnClickGet(onclick_counter)
+item=onclicks:get(onclick_counter)
 if item ~= nil
 then
       if strutil.strlen(item.left) > 0 then str=str.."%{A:" .. string.format("click=%d", onclick_counter) .. ":}" ; count=count+1 end
@@ -338,17 +390,17 @@ local val, item
 if string.sub(str, 1, 6) == "click="
 then
   val=tonumber(string.sub(str, 7))
-  item=OnClickGet(val, "left")
+  item=onclicks:get(val, "left")
   if item ~= nil then process.spawn(item) end
 elseif string.sub(str, 1, 7) == "click2="
 then
   val=tonumber(string.sub(str, 8))
-  item=OnClickGet(val, "middle")
+  item=onclicks:get(val, "middle")
   if item ~= nil then process.spawn(item) end
 elseif string.sub(str, 1, 7) == "click3="
 then
   val=tonumber(string.sub(str, 8))
-  item=OnClickGet(val, "right")
+  item=onclicks:get(val, "right")
   if item ~= nil then process.spawn(item) end
 end
 
@@ -398,8 +450,8 @@ do
       onclick_counter=onclick_counter+1
     elseif char=="}"
     then 
-	LemonbarCloseOnClick(buttons)
-	buttons=0
+      LemonbarCloseOnClick(buttons)
+      buttons=0
     else outstr=outstr..char
     end
   elseif char=="%" then outstr=outstr.."%%"
@@ -413,6 +465,18 @@ return(outstr)
 end
 
 
+
+function LemonbarLaunch(xpos, ypos)
+local str, S
+
+  str="cmd:lemonbar -g " .. settings.win_width .. "x"..settings.win_height.."+"..xpos.."+0"
+  if strutil.strlen(settings.font) > 0 then str=str .. " -f '" .. settings.font .. "'" end
+  if strutil.strlen(settings.foreground) > 0 then str=str .. " -F '" .. settings.foreground .. "'" end
+  if strutil.strlen(settings.background) > 0 then str=str .. " -B '" .. settings.background .. "'" end
+  S=stream.STREAM(str, "rw stderr2null")
+
+return S
+end
 -- These functions all relate to bars displayed in the terminal using vt100/ansi escape sequences
 
 
@@ -442,7 +506,7 @@ function TerminalWrap(steal_lines)
 -- we access them on events
 
   stdio=stream.STREAM("-")
-  shell=stream.STREAM("cmd:/bin/sh", "pty echo")
+  shell=stream.STREAM("cmd:/bin/sh", "rw pty echo stderr2null")
   term=terminal.TERM(stdio)
   if (steal_lines > 0)
   then  
@@ -533,7 +597,7 @@ function X11GetRootGeometry()
 local S, line, wid, high
 local geom=""
 
-S=stream.STREAM("cmd:xwininfo -root")
+S=stream.STREAM("cmd:xwininfo -root", "rw stderr2null")
 line=S:readln()
 while line ~= nil
 do
@@ -631,29 +695,14 @@ end
 
 
 function OpenOutput(settings)
-local width, height, xpos, S
+local xpos, S
 local str=""
 
+
 xpos=X11TranslateXPos(settings) 
-if settings.output=="dzen2"
-then
-  str="cmd:dzen2 -x " .. xpos .. " -w " .. settings.win_width 
-  if strutil.strlen(settings.ypos) > 0 then str=str .. " -y ".. settings.ypos end
-  if strutil.strlen(settings.align) > 0 then str=str .. " -ta " .. settings.align end
-  if strutil.strlen(settings.font) > 0 then str=str .. " -fn '" .. settings.font .. "'" end
-  if strutil.strlen(settings.foreground) > 0 then str=str .. " -fg '" .. settings.foreground .. "'" end
-  if strutil.strlen(settings.background) > 0 then str=str .. " -bg '" .. settings.background .. "'" end
-  S=stream.STREAM(str)
-elseif settings.output=="lemonbar"
-then
-  str="cmd:lemonbar -g " .. settings.win_width .. "x"..settings.win_height.."+"..xpos.."+0"
-  if strutil.strlen(settings.font) > 0 then str=str .. " -f '" .. settings.font .. "'" end
-  if strutil.strlen(settings.foreground) > 0 then str=str .. " -F '" .. settings.foreground .. "'" end
-  if strutil.strlen(settings.background) > 0 then str=str .. " -B '" .. settings.background .. "'" end
-  S=stream.STREAM(str)
-elseif settings.output=="xterm" -- put bar in xterm title by wrapping terminal
-then
-  S=TerminalWrap(settings.steal_lines)
+if settings.output=="dzen2" then S=DZenLaunch(xpos, settings.ypos)
+elseif settings.output=="lemonbar" then S=LemonbarLaunch(xpos, settings.ypos)
+elseif settings.output=="xterm" then S=TerminalWrap(settings.steal_lines)
 else 
   if settings.ypos=="bottom" --put bar at bottom of screen, wrap terminal
   then
@@ -664,16 +713,20 @@ else
   end
 end
 
+if S ~= nil then poll_streams:add(S) end
+
+
 return S
 end
 
 
-function ProcessBarProgramOutput(str)
-str=strutil.trim(str)
-if string.sub(str, 1, 6) == "reload" then KvReloadCounter(string.sub(str, 8)) end
-if settings.output=="lemonbar" then LemonbarProcessClick(str) end
-end
 
+function ProcessBarProgramOutput(str)
+  str=strutil.trim(str)
+  if string.sub(str, 1, 6) == "reload" then KvReloadCounter(string.sub(str, 8)) end
+  if string.sub(str, 1, 13) == "cycle_display" then display:cycle(); lookup_counter=0; display:alerts_clear() end
+  if settings.output=="lemonbar" then LemonbarProcessClick(str) end
+end
 -- functions relating to reading data from sysfs
 
 function SysFSReadFile(path)
@@ -917,7 +970,11 @@ return translations
 end
 
 
-function OnClickAdd(value)
+onclicks=
+{
+items={},
+
+add=function(self, value)
 local toks, tok
 local click={}
 
@@ -927,18 +984,29 @@ click.left=toks:next()
 click.middle=toks:next()
 click.right=toks:next()
 
-table.insert(settings.onclicks, click)
+table.insert(self.items, click)
 
-end
+end,
 
-function OnClickGet(index, button)
-return settings.onclicks[index]
-end
 
-function OnClickGetButton(index, button)
+
+get=function(self, display_id, onclick_id)
+local item, str
+
+str=tostring(display_id) .. ":" .. tostring(onclick_id)
+item=self.items[str]
+if item==nil then return nil end
+
+return item
+end,
+
+
+
+get_button=function(self, displayno, index, button)
 local click
 
-click=settings.onclicks[index]
+click=self:get(displayno, index)
+
 if click ~= nil
 then
 	if button == "left" then return click.left 
@@ -948,14 +1016,55 @@ then
 end
 
 return ""
+end,
+
+
+init_displaystr=function(self, item_pos, item_list, display_id, display_str)
+local toks, tok, str
+local onclick_count=0
+
+toks=strutil.TOKENIZER(display_str, "~{", "ms")
+tok=toks:next()
+while tok ~= nil
+do
+  if tok == "~{" 
+  then
+    str=tostring(display_id) .. ":" .. tostring(onclick_count)
+    item_pos = item_pos + 1
+    onclick_count=onclick_count + 1
+    self.items[str]=item_list[item_pos]
+  end
+
+  tok=toks:next()
 end
+
+return item_pos
+end,
+
+
+init=function(self)
+local list, dstr
+local pos=0
+local display_id=0
+
+list=self.items
+self.items={}
+
+dstr=display:first()
+while dstr ~= nil
+do
+pos=self:init_displaystr(pos, list, display_id, dstr)
+display_id=display_id + 1
+dstr=display:next()
+end
+
+end
+}
 -- functions related to configuration, both on the command-line and from config files
 
 
 -- set intital value of all settings
-function SettingsInit()
-
-settings.display="~w$(day_name)~0 $(day) $(month_name) ~y$(time)~0 $(bats:color) fs:$(fs:/:color)%  mem:$(mem:color)% load:$(load_percent:color)% cputemp:$(cpu_temp:color)c ~y$(ip4address:default)~0"
+function SettingsDefaults()
 
 settings.config_files="~/.config/barmaid.lua/barmaid.conf:~/.config/barmaid.conf"
 settings.config_files=settings.config_files .. ":" .. "~/.barmaid.conf"
@@ -964,6 +1073,7 @@ settings.modules_dir="/usr/local/lib/barmaid/:/usr/lib/barmaid:~/.local/lib/barm
 settings.datasock=""
 settings.win_width=800
 settings.win_height=40
+settings.updater_run=60 
 settings.font=""
 settings.output="default"
 settings.foreground=""
@@ -975,7 +1085,7 @@ settings.icon_path=".:/usr/share/icons"
 --steal lines is lines to take from the terminal when acting as a terminal bar
 settings.steal_lines=0
 settings.datafeeds={}
-settings.onclicks={}
+settings.display_cycle_time=0
 settings.modsettings={}
 
 return settings
@@ -1006,11 +1116,14 @@ settings.length=GeometryStringNext(toks)
 end
 
 
+
 function LoadConfigFile(path)
 local S, str, name, value
 local retval=true
 
 if strutil.strlen(path) ==0 then return false end
+
+print("LOAD: ["..path.."]")
 
 if string.sub(path, 1, 1) == "~" then path=process.getenv("HOME") .. string.sub(path, 2) end
 
@@ -1032,7 +1145,7 @@ do
 
   if name=="display" or name=="display-string"
   then 
-    settings.display=value
+    display:add(value)
   elseif name=="xpos"
   then
     settings.xpos=value
@@ -1081,9 +1194,12 @@ do
   elseif name=="datasock"
   then
     settings.datasock=value
+  elseif name=="display_cycle_time"
+  then
+    settings.display_cycle_time=tonumber(value)
   elseif name=="onclick"
   then
-    OnClickAdd(value)
+    onclicks:add(value, display:count())
   end
   end
   str=S:readln()
@@ -1142,6 +1258,9 @@ do
   elseif str=="-t" or str=="-type" then
     settings.output=args[i+1]
     args[i+1]=""
+  elseif str=="-C" or str=="-cycle" then
+    settings.display_cycle_time=tonumber(args[i+1])
+    args[i+1]=""
   elseif str=="-fn" or str=="-font" then
     settings.font=args[i+1]
     args[i+1]=""
@@ -1178,7 +1297,7 @@ do
     args[i+1]=""
   elseif str=="-onclick"
   then
-    OnClickAdd(args[i+1])
+    onclicks:add(args[i+1], display:count())
     args[i+1]=""
   elseif str=="-help-colors" or str=="--help-colors" or str=="-help-colours"
   then
@@ -1206,7 +1325,7 @@ do
     DisplayHelp()
   elseif strutil.strlen(args[i]) > 0
   then
-    settings.display=args[i]
+    display:add(args[i])
   end  
 
 end
@@ -1217,13 +1336,36 @@ SelectOutput(settings)
 
 end
 
+
+
+function SettingsInit()
+
+-- load some initial settings defaults
+SettingsDefaults()
+
+-- init display_translations system
+display_translations=DisplayTranslations()
+
+-- parse command-line, then load config files (which might have been specified on command-line)
+-- then parse command-line again because we want command-line options to override config-files
+ParseCommandLineConfigFiles(arg)
+LoadConfigFiles()
+ParseCommandLine(arg)
+
+-- add default 'display string' if none have been added by config file or command line
+if display.display_list_size == 0
+then
+display:add("~w$(day_name)~0 $(day) $(month_name) ~y$(time)~0 $(bats:color) fs:$(fs:/:color)%  mem:$(mem:color)% load:$(load_percent:color)% cputemp:$(cpu_temp:color)c ~y$(ip4address:default)~0")
+end
+
+end
 -- functions related to displaying help to the user
 
 function DisplayHelp()
 print()
 print("barmaid.lua  version: " .. version)
 print()
-print("usage:  lua barmaid.lua [options] [format string]")
+print("usage:  lua barmaid.lua [options] [display string]")
 print()
 print("options:")
 print("-c <path>          - path to config file")
@@ -1232,6 +1374,7 @@ print("-x <pos>           - x-position of window, in pixels or 'left', 'right', 
 print("-y <pos>           - y-position of window, in pixels or 'top', 'bottom'")
 print("-w <width>         - width of window in pixels")
 print("-h <height>        - height of window in pixels")
+print("-C <seconds>       - 'cycle time' to switch between multiple display strings")
 print("-align <alignment> - set text alignment, 'left', 'right' or 'center'")
 print("-fn <font name>    - font to use")
 print("-font <font name>  - font to use")
@@ -1242,8 +1385,8 @@ print("-tr <translation>  - translate a value to a different display value")
 print("-kvfile <path>     - path to a file that contains name-value pairs")
 print("-sock <path>       - path to a unix stream socket that receives name-value pairs")
 print("-onclick <command> - register a command to be used in clickable areas (see -help-onclick)")
-print("-help-colors       - list color switches recognized in format string")
-print("-help-values       - list values recognized in format string")
+print("-help-colors       - list color switches recognized in display string")
+print("-help-values       - list values recognized in display string")
 print("-help-onclick      - explain clickable area system")
 print("-help-images       - explain images display system")
 print("-help-sock         - explain datasocket system")
@@ -1253,14 +1396,14 @@ print("-?                 - this help")
 print("-help              - this help")
 print("--help             - this help")
 print()
-print("example format string:")
+print("example display string:")
 print("  $(date) $(time)   mem used: $(mem)%  fs used: $(fs:/)%")
-print("this format string must be enclosed in single quotes (') if passed on the command-line (rather than in config file), or the shell will eat it.")
+print("this display string must be enclosed in single quotes (') if passed on the command-line (rather than in config file), or the shell will eat it.")
 print()
 print("Alternatively the form '^(' can be used instead of '$(', allowing double-quotes to be used and shell vars to be passed. e.g.:")
 print("  host: $HOST  ^(date) ^(time)    mem used: ^(mem)%  fs used: ^(fs:/)%")
 print()
-print("use '-help-values' to get a list of values that can be included in the format string, and '-help-colors' for a list of color-codes")
+print("use '-help-values' to get a list of values that can be included in the display string, and '-help-colors' for a list of color-codes")
 print()
 os.exit(0)
 end
@@ -1285,6 +1428,7 @@ print("The uppercase version of these sets the background instead of the foregro
 print()
 print("Example:  ~r this text in red ~0 ~w~BThis text white on a blue background~0")
 print()
+print("~> is a special case that allows positioning items (currently only in dzen2). It has the format ~>{pixels} e.g. ~{1200}")
 print("~i is a special case that allows the displaying of images in dzen2. See '-help-images'")
 print("~{ and ~} are special cases that define clickable areas. See '-help-onclick'")
 
@@ -1388,8 +1532,6 @@ print("")
 
 print("the ip4 values have a special case where the interface suffix is specified as 'default'. In this case the system will go with the first interface it finds that has an ip and isn't the local 'lo' interface")
 print("")
-print("the default format string is:")
-print(settings.display)
 print()
 os.exit(0)
 end
@@ -1451,6 +1593,21 @@ print("    onclick 'links -g www.google.com'||firefox")
 print()
 print("In this example left clicking (button 1) on '1st on click' will launch xterm, middle clicking (button 2) will launch rxvt, and right clicking (button 3) will launch kitty.")
 print("Similarly left click on '2nd on click' will launch links, and right click will launch firefox.")
+print()
+print("On click can only launch a program. This means that for 'onclick' entries to tell barmaid to do something an 'echo' command must be used to echo the instruction back to barmaid.lua\n")
+print("A common example of this would be sending the 'cycle_display' instruction. This is used when there are multiple text displays that are shown on a bar and can be cycled through. For example:\n");
+print()
+print("    display '$(time) ~{xterm~} ~{rxvt~} ~{>>~}'")
+print("    display '$(time) ~{firefox~} ~{>>~}'")
+print()
+print("    onclick xterm")
+print("    onclick rxvt")
+print("    onclick echo cycle_display")
+print("    onclick firefox")
+print("    onclick echo cycle_display")
+print()
+print("If multiple display bars are used, then the 'onclicks' match against '~{' across all those display strings, using up the '~{' items in the first string, then the next, then the next.")
+print()
 os.exit(0)
 end
 
@@ -1509,28 +1666,29 @@ print("<config type> <value>")
 print()
 print("Possible config types are:")
 print()
-print("display            string to be displayed in the bar")
-print("display-string     string to be displayed in the bar")
-print("output             output type, 'dzen2', 'lemonbar', 'dwm', etc")
-print("outtype            output type, 'dzen2', 'lemonbar', 'dwm', etc")
-print("xpos               x-position, can be 'left', 'right', 'center' or a pixel-position")
-print("ypos               y-position, can be 'left', 'right', 'center' or a pixel-position")
-print("width              bar width in pixels")
-print("height             bar height in pixels")
-print("font               name of font to use in the bar")
-print("fn                 name of font to use in the bar")
-print("foreground         default foreground color")
-print("fg                 default foreground color")
-print("background         default background color")
-print("bg                 default background color")
-print("translate          translate a value to another (see --help-translations")
-print("tr                 translate a value to another (see --help-translations")
-print("kvfile             path to a key-value file")
-print("icon-path          colon-separated search path to find icons")
-print("icon_path          colon-separated search path to find icons")
-print("iconpath           colon-separated search path to find icons")
-print("datasock           path to a datasocket to receive key=value messages on")
-print("onclick            configure an 'onclick' (see --help-onclick)")
+print("display              string to be displayed in the bar (multiple can be configured and cycled through)")
+print("display-string       string to be displayed in the bar (multiple can be configured and cycled through)")
+print("display_cycle_time   when multiple display strings are configured, cycle between them at interval defined in seconds")
+print("output               output type, 'dzen2', 'lemonbar', 'dwm', etc")
+print("outtype              output type, 'dzen2', 'lemonbar', 'dwm', etc")
+print("xpos                 x-position, can be 'left', 'right', 'center' or a pixel-position")
+print("ypos                 y-position, can be 'left', 'right', 'center' or a pixel-position")
+print("width                bar width in pixels")
+print("height               bar height in pixels")
+print("font                 name of font to use in the bar")
+print("fn                   name of font to use in the bar")
+print("foreground           default foreground color")
+print("fg                   default foreground color")
+print("background           default background color")
+print("bg                   default background color")
+print("translate            translate a value to another (see --help-translations")
+print("tr                   translate a value to another (see --help-translations")
+print("kvfile               path to a key-value file")
+print("icon-path            colon-separated search path to find icons")
+print("icon_path            colon-separated search path to find icons")
+print("iconpath             colon-separated search path to find icons")
+print("datasock             path to a datasocket to receive key=value messages on")
+print("onclick              configure an 'onclick' (see --help-onclick)")
 
 os.exit(0)
 end
@@ -1543,6 +1701,10 @@ get put in a list and called as functions in that list
 ]]--
 
 batteries={
+
+
+low_battery_level=10,
+
 
 read_battery =function(self, name, path)
 local bat={}
@@ -1619,49 +1781,58 @@ end
 
 if fill ~= nil and draw ~= nil
 then
-  AddDisplayValue(name .. ":life", fill / draw, "%.2f", nill)
+  display:add_value(name .. ":life", fill / draw, "%.2f", nill)
 end
 
 return fill, draw
 end,
 
 
+
+check_bats_low=function(self, total_amount, prev_amount)
+
+if total_amount < self.low_battery_level then display:add_alert("low battery alert", "~R~w     LOW BATTERY     ~0") end
+
+end,
+
+
 process_total_life=function(self, total_fill, total_draw)
-local nowcs, val, draw_cs, duration_cs
+local nowcs, draw_cs, duration_cs, total_amount
 
 now_cs=time.centisecs()
 
 -- milliWattHours divided by milliWatts gives Hours
-if total_draw > 0 then val=total_fill / total_draw
+if total_draw > 0 then total_amount=total_fill / total_draw
 -- charge / current can be more troublesome
 elseif self.prev_fill ==nil 
 then
-self.prev_fill=total_fill
-self.prev_cs=now_cs
+  self.prev_fill=total_fill
+  self.prev_cs=now_cs
 elseif self.prev_fill ~= total_fill
 then
--- charge is in mAh, calculate draw per centisec
-duration_cs=now_cs - self.prev_cs
-draw_cs = (self.prev_fill - total_fill) / duration_cs
--- convert to draw per hour
-total_draw=draw_cs * 100 * 3600 
-if total_draw > 0 then val=total_fill / total_draw end
-self.prev_fill=total_fill
-self.prev_cs=now_cs
+  -- charge is in mAh, calculate draw per centisec
+  duration_cs=now_cs - self.prev_cs
+  draw_cs = (self.prev_fill - total_fill) / duration_cs
+
+  -- convert to draw per hour
+  total_draw=draw_cs * 100 * 3600 
+  if total_draw > 0 then total_amount=total_fill / total_draw end
+  self.prev_fill=total_fill
+  self.prev_cs=now_cs
 end
 
 
-if val ~= nil
+if total_amount ~= nil
 then
-   display_values["bats_life"]=self:fmt_life(val)
+   display_values["bats_life"]=self:fmt_life(total_amount)
    
-   if val > 1.0 then prefix="~g"
-   elseif val > 0.5 then prefix="~y"
-   elseif val > 0.1 then prefix="~r"
+   if total_amount > 1.0 then prefix="~g"
+   elseif total_amount > 0.5 then prefix="~y"
+   elseif total_amount > 0.1 then prefix="~r"
    else prefix="~R~w"
    end
-   
-   display_values["bats_life:color"]=prefix .. self:fmt_life(val) .."~0"
+
+   display_values["bats_life:color"]=prefix .. self:fmt_life(total_amount) .."~0"
 end
 
 
@@ -1670,6 +1841,8 @@ end,
 
 process=function(self)
 local bats, batnum, i, bat, perc, val, prefix, fill, draw
+local total_charge=0
+local total_max=0
 local total_fill=0
 local total_draw=0
 local bats_str=""
@@ -1698,7 +1871,8 @@ do
     perc=0
 		end
   end
-  AddDisplayValue(name, perc, "%d", color_map)
+
+  display:add_value(name, perc, "%d", color_map)
   bats_str=bats_str .. name..":"..display_values[name].."%"
   bats_str_color=bats_str_color .. name..":"..display_values[name..":color"].."%"
 
@@ -1708,14 +1882,22 @@ do
   fill,draw=self:calc_life(bat)
   if fill ~= nil then total_fill=total_fill + fill end
   if draw ~= nil then total_draw=total_draw + draw end
+	if bat.charge ~= nil then total_charge=total_charge + bat.charge end
+	if bat.max ~= nil then total_max=total_max + bat.max end
 end
 
 display_values["bats"]=bats_str
 display_values["bats:color"]=bats_str_color
 
+perc=math.floor((total_charge * 100 / total_max) + 0.5)
+self:check_bats_low(perc, self.prev_perc)
+self.prev_perc=perc
+
 self:process_total_life(total_fill, total_draw)
 end
 }
+
+
 
 function LookupBatteries()
 batteries:process()
@@ -1806,8 +1988,8 @@ then
   if display_values["cpu_last_used"] ~= nil
   then
   val=(used - tonumber(display_values["cpu_last_used"])) / (total - display_values["cpu_last_total"])
-  AddDisplayValue("load", val * cpu_count, "%3.1f", nil)
-  AddDisplayValue("load_percent", val * 100.0, "% 3.1f", usage_color_map)
+  display:add_value("load", val * cpu_count, "%3.1f", nil)
+  display:add_value("load_percent", val * 100.0, "% 3.1f", usage_color_map)
   else
   display_values["load"]="---"
   display_values["load_percent"]="---"
@@ -1892,7 +2074,7 @@ then
   end
   S:close()
 
-	freemem=freemem + cachedmem + buffermem
+  freemem=freemem + cachedmem + buffermem
 else
   availmem=sys.freemem() + sys.buffermem()
   totalmem=sys.totalmem()
@@ -1906,19 +2088,19 @@ display_values["cachedmem"]=strutil.toMetric(cachedmem)
 
 
 mem_perc=freemem * 100 / totalmem
-AddDisplayValue("free", mem_perc, "% 3.1f", usage_color_map)
+display:add_value("free", mem_perc, "% 3.1f", usage_color_map)
 
 mem_perc=availmem * 100 / totalmem
-AddDisplayValue("avail", mem_perc, "% 3.1f", usage_color_map)
+display:add_value("avail", mem_perc, "% 3.1f", usage_color_map)
 
 mem_perc=100.0 - (freemem * 100 / totalmem)
-AddDisplayValue("mem", mem_perc, "% 3.1f", usage_color_map)
+display:add_value("mem", mem_perc, "% 3.1f", usage_color_map)
 
 mem_perc=100.0 - (availmem * 100 / totalmem)
-AddDisplayValue("memuse", mem_perc, "% 3.1f", usage_color_map)
+display:add_value("memuse", mem_perc, "% 3.1f", usage_color_map)
 
 mem_perc=cachedmem * 100 / totalmem
-AddDisplayValue("cmem", mem_perc, "% 3.1f", usage_color_map)
+display:add_value("cmem", mem_perc, "% 3.1f", usage_color_map)
 
 
 --do all the same for swap
@@ -1935,26 +2117,47 @@ else
   mem_perc=0
 end
 
-AddDisplayValue("swap", mem_perc, "% 3.1f", usage_color_map)
+display:add_value("swap", mem_perc, "% 3.1f", usage_color_map)
 
 end
 
 -- functions related to lookups of network values like ip addresses, default gateway, etc
 
+ip4network={
 
-function LookupDefaultRouteIfaceParse(str) 
+hextoip=function(self, hex)
+local str, ip
+
+str=string.sub(hex, 7, 8)
+ip=tostring(tonumber( str, 16)) .. "."
+
+str=string.sub(hex, 5, 6)
+ip=ip .. tostring(tonumber( str, 16)) .. "."
+
+str=string.sub(hex, 3, 4)
+ip=ip .. tostring(tonumber( str, 16)) .. "."
+
+str=string.sub(hex, 1, 2)
+ip=ip .. tostring(tonumber( str, 16))
+
+return ip
+end,
+
+
+route_parse=function(self, str) 
 local toks
-local iface, route
+local iface, route, gateway
 
 toks=strutil.TOKENIZER(str, "\\S")
 iface=toks:next()
 route=toks:next()
+gateway=self:hextoip(toks:next())
 
-return iface, route
-end
+return iface, route, gateway
+end,
 
 
-function LookupDefaultRouteIface()
+default_route=function(self)
 local S, str, iface, dest
 
 S=stream.STREAM("/proc/net/route", "r")
@@ -1964,11 +2167,11 @@ then
   str=S:readln()
   while str ~= nil
   do
-    iface,dest=LookupDefaultRouteIfaceParse(str) 
+    iface,dest,gateway=self:route_parse(str) 
     if dest == "00000000" 
     then 
-  S:close()
-  return iface 
+      S:close()
+      return iface,gateway 
     end
     str=S:readln()
   end
@@ -1976,13 +2179,13 @@ end
 
 S:close()
 return nil
-end
+end,
 
 
-function LookupIPv4()
-local iface, toks, default_iface
 
-default_iface=LookupDefaultRouteIface()
+lookup_interfaces=function(self, default_iface)
+local toks, iface
+
 toks=strutil.TOKENIZER(sys.interfaces(), " ")
 iface=toks:next()
 while iface ~= nil
@@ -1996,7 +2199,6 @@ then
 
   if iface == default_iface
   then
-  display_values["ip4interface:default"]=iface
   display_values["ip4address:default"]=sys.ip4address(iface)
   display_values["ip4netmask:default"]=sys.ip4netmask(iface)
   display_values["ip4broadcast:default"]=sys.ip4broadcast(iface)
@@ -2004,6 +2206,43 @@ then
 end
 
 iface=toks:next()
+end
+
+end
+
+}
+
+
+
+function LookupIPv4(fmt_str)
+local iface, toks, str, default_iface, default_gateway
+local get_external_ip=false
+local get_ip4=false
+
+toks=strutil.TOKENIZER(fmt_str, "$(|^(|:|)", "ms")
+str=toks:next()
+while str ~= nil
+do
+  if str == "ip4external" then get_external_ip=true
+  elseif string.sub(str, 1, 3) == "ip4" then get_ip4=true
+  end
+str=toks:next()
+end
+
+if get_external_ip == true 
+then 
+--if lookup_counter % 30 == 0 then display_values["ip4external"]=net.externalIP() end
+end
+
+if get_ip4 == true
+then
+default_iface,default_gateway=ip4network:default_route()
+
+display_values["ip4interface:default"]=default_iface
+display_values["ip4gateway:default"]=default_gateway
+display_values["ip4gateway"]=default_gateway
+
+ip4network:lookup_interfaces(default_iface)
 end
 
 end
@@ -2068,11 +2307,11 @@ end
 end
 -- functions related to lookups of filesystems/partitions 
 
-function LookupPartitionsGetList()
+function LookupPartitionsGetList(fmt_str)
 local toks, str
 local parts={}
 
-toks=strutil.TOKENIZER(settings.display, "$(|^(|:|)", "ms")
+toks=strutil.TOKENIZER(fmt_str, "$(|^(|:|)", "ms")
 str=toks:next()
 while str ~= nil
 do
@@ -2110,13 +2349,13 @@ return nil
 end
 
 
-function LookupPartitions()
+function LookupPartitions(fmt_str)
 local str, perc
 local fs_mount
 local S, requested_partitions
 
+requested_partitions=LookupPartitionsGetList(fmt_str)
 
-requested_partitions=LookupPartitionsGetList()
 
 S=stream.STREAM("/proc/self/mounts", "r")
 if S ~= nil
@@ -2129,7 +2368,7 @@ then
     if fs_mount ~= nil
     then
       perc=math.floor( (filesys.fs_used(fs_mount) * 100 / filesys.fs_size(fs_mount)) + 0.5)
-      AddDisplayValue("fs:"..fs_mount, perc, nil, usage_color_map)
+      display:add_value("fs:"..fs_mount, perc, nil, usage_color_map)
     end
 
   str=S:readln()
@@ -2157,7 +2396,7 @@ do
   then
     str=SysFSReadFile(path.."/temp")
     val=tonumber(str) / 1000.0
-    AddDisplayValue("cpu_temp", val, "% 3.1f", thermal_color_map)
+    display:add_value("cpu_temp", val, "% 3.1f", thermal_color_map)
   end
   path=Glob:next()
 end
@@ -2195,7 +2434,7 @@ do
   str=SysFSReadFile(path.."/name")
   if str == "coretemp"
   then
-    AddDisplayValue("cpu_temp", LookupCoreTemp(path), nil, thermal_color_map)
+    display:add_value("cpu_temp", LookupCoreTemp(path), nil, thermal_color_map)
   end
   end
 
@@ -2236,27 +2475,12 @@ end
 
 -- functions related to lookups of date and time
 
-function LookupTimes()
-  display_values.time=time.format("%H:%M:%S")
-  display_values.date=time.format("%Y/%m/%d")
-  display_values.day_name=time.format("%a")
-  display_values.month_name=time.format("%b")
-  display_values.hour=time.format("%H")
-  display_values.minutes=time.format("%M")
-  display_values.seconds=time.format("%S")
-  display_values.year=time.format("%Y")
-  display_values.month=time.format("%m")
-  display_values.day=time.format("%d")
-	LookupTimezones()
-end
 
-
-
-function LookupTimezones()
+function LookupTimezones(fmt_str)
 local toks, str
 local parts={}
 
-toks=strutil.TOKENIZER(settings.display, "$(|^(|:|)", "ms")
+toks=strutil.TOKENIZER(fmt_str, "$(|^(|:|)", "ms")
 str=toks:next()
 while str ~= nil
 do
@@ -2278,6 +2502,21 @@ return parts
 end
  
 
+function LookupTimes(fmt_str)
+  display_values.time=time.format("%H:%M:%S")
+  display_values.date=time.format("%Y/%m/%d")
+  display_values.day_name=time.format("%a")
+  display_values.month_name=time.format("%b")
+  display_values.hour=time.format("%H")
+  display_values.minutes=time.format("%M")
+  display_values.seconds=time.format("%S")
+  display_values.year=time.format("%Y")
+  display_values.month=time.format("%m")
+  display_values.day=time.format("%d")
+	LookupTimezones(fmt_str)
+end
+
+
 -- these functions relate to loading modules that add features or otherwise change the behavior of barmaid
 
 
@@ -2293,6 +2532,7 @@ local str, glob
   end
 end
 
+
 function LoadModules()
 local toks, path
 
@@ -2306,13 +2546,200 @@ do
   if LoadModulesFromDir(path) then break end
   path=toks:next()
 end
+
+end
+
+updater={
+
+update_mods={},
+next_lookup=0,
+S=nil,
+proc=nil,
+
+
+get_stream=function(self)
+return self.S
+end,
+
+-- is an update run required?
+required=function(self, now)
+
+if #self.update_mods == 0 then return false end
+
+--if self.S exists, then a process is already running
+if self.S ~= nil then return false end
+
+if now > self.next_lookup then return true end
+
+return false
+end,
+
+
+-- add a module to be updated 
+add_mod=function(self, mod)
+table.insert(self.update_mods, mod)
+end,
+
+
+process_input=function(self)
+local line, toks, key, value
+
+if self.S ~= nil 
+then
+   line=self.S:readln()
+   if line == nil  
+   then 
+     poll_streams:delete(self.S)
+     self.S:close()
+     self.S=nil
+     self.proc=nil
+   return false 
+   end
+   
+   toks=strutil.TOKENIZER(strutil.trim(line), "=")
+   key=toks:next()
+   value=toks:remaining()
+   if key ~= nil then display_values[key]=value end
+end
+
+return true
+end,
+
+
+--do an actual update run, querying data from modules
+run=function(self)
+local i, mod
+
+for i,mod in ipairs(self.update_mods)
+do
+mod:lookup()
+end
+
+end,
+
+
+--launch a new update process
+launch=function(self)
+
+
+if self.S == nil 
+then
+  self.proc=process.PROCESS("", "stderr2null")
+  if self.proc == nil
+  then
+    self:run()
+    os.exit()
+  else
+    self.next_lookup=time.secs() + settings.updater_run
+    self.S=self.proc:get_stream()
+    if self.S ~= nil then poll_streams:add(self.S) end
+  end
+end
+
+return self.S
 end
 
 
+}
+-- this module holds functions that relate to the actual display of
+-- text/values in the bar
 
 
+display={
 
-function AddDisplayValue(name, value, fmtstr, colormap)
+display_list_size=0,
+display_tick=0, -- display tick is used by display cycling on the bar
+list_pos=0,     -- list_pos is only used by 'first()' and 'next()' when we want to examine stored displays
+display_list={},
+alert_list={},
+
+
+add=function(self, display_str)
+self.display_list[self.display_list_size+1]=display_str
+self.display_list_size=self.display_list_size + 1 
+end,
+
+
+count=function(self)
+return(self.display_list_size)
+end,
+
+curr_num=function(self)
+return(self.display_tick % self.display_list_size)
+end,
+
+add_alert=function(self, name, display_str)
+alert={}
+
+
+if self.alert_list[name] == nil
+then
+alert.expire=nil
+alert.text=display_str
+
+self.alert_list[name]=alert
+end
+
+end,
+
+
+alerts_clear=function(self)
+self.alert_list={}
+end,
+
+cycle=function(self)
+self.display_tick = self.display_tick + 1
+display_update_required = true
+end,
+
+
+first=function(self)
+if self.display_list_size == 0 then return nil end
+self.list_pos=1
+return self.display_list[self.list_pos]
+end,
+
+
+next=function(self)
+if self.display_list_size == 0 then return nil end
+
+self.list_pos=self.list_pos + 1
+if self.list_pos > self.display_list_size then return nil end
+return self.display_list[self.list_pos]
+end,
+
+
+get_curr=function(self)
+local pos, str, item
+local count=0
+
+for pos, item in pairs(self.alert_list)
+do
+if item.idle == nil then item.idle=lookup_counter+3 end
+if item.expire == nil then item.expire=lookup_counter+6 end
+if item.idle > lookup_counter then return item.text end
+if item.expire < lookup_counter then self.alert_list[pos]=nil end
+end
+
+
+if self.display_list_size == 0 then return "" end
+
+if settings.display_cycle_time > 0
+then
+if lookup_counter % settings.display_cycle_time == 0 then self:cycle() end
+end
+
+pos=self.display_tick % self.display_list_size
+str=self.display_list[pos+1]
+if str == nil then str=self.display_list[1] end
+
+return str
+end,
+
+
+-- add a value to the list of current values, these values then get
+-- substituted into the bar's display text
+add_value=function(self, name, value, fmtstr, colormap)
 local valstr
 
   if fmtstr ~= nil 
@@ -2328,14 +2755,17 @@ local valstr
     display_values[name..":color"]=AutoColorValue(value, colormap)..valstr.."~0"
   end
 
-end
+end,
 
 
 
-function GetDisplayVars(str)
+-- returns a table of values in the format
+-- vars[name]=value
+get_vars=function(self, fmt_str)
 local vars={}
+local toks, str
 
-toks=strutil.TOKENIZER(settings.display, "$(|^(|@(|>(|)", "ms")
+toks=strutil.TOKENIZER(fmt_str, "$(|^(|@(|>(|)", "ms")
 str=toks:next()
 while str ~= nil
 do
@@ -2344,7 +2774,7 @@ do
 end
 
 return vars
-end
+end,
 
 
 
@@ -2353,7 +2783,7 @@ end
 -- using the badly named 'name' variable which contains the name 
 -- of a lookup as it appeared in the main config string for the
 -- display bar
-function InitializeLookup(lookups, name)
+initialize_lookup=function(self, lookups, name)
 local check_names={}
 local prefix
 
@@ -2378,84 +2808,79 @@ check_names={["time"]=1, ["date"]=1, ["day_name"]=1, ["day"]=1, ["month"]=1, ["m
 
 if check_names[name] ~= nil or string.sub(name, 1, 6) == "tztime" or string.sub(name, 1, 6) == "tzdate"
 then
-    table.insert(lookups, LookupTimes)
+    table.insert(self.lookups, LookupTimes)
 end
 
 if string.sub(name, 1, 4) == "bat:" or string.sub(name, 1, 5) == "bats:"
 then
-  table.insert(lookups, LookupBatteries)
+  table.insert(self.lookups, LookupBatteries)
 end
 
 if string.sub(name, 1,3) == "fs:"
 then
-  table.insert(lookups, LookupPartitions)
+  table.insert(self.lookups, LookupPartitions)
 end
 
 if string.sub(name, 1, 8) == "cpu_temp"
 then
-  table.insert(lookups, LookupTemperatures)
+  table.insert(self.lookups, LookupTemperatures)
 end
 
 if name == "cpu_count" or string.sub(name, 1, 4) == "load"
 then
-  table.insert(lookups, CpuUsage)
+  table.insert(self.lookups, CpuUsage)
 end
 
 if string.sub(name, 1, 9) == "cpu_freq:"
 then
-  table.insert(lookups, CpuFreq)
+  table.insert(self.lookups, CpuFreq)
 end
 
 
 if string.sub(name, 1, 4) == "load"
 then
-  table.insert(lookups, LookupLoad)
+  table.insert(self.lookups, LookupLoad)
 end
 
 if string.sub(name, 1, 3) == "ip4"
 then
-  table.insert(lookups, LookupIPv4)
+  table.insert(self.lookups, LookupIPv4)
 end
 
 if string.sub(name, 1, 3) == "up:"
 then
-  table.insert(lookups, LookupServicesUp)
+  table.insert(self.lookups, LookupServicesUp)
   if lookup_values.ServicesUp == nil then lookup_values.ServicesUp={} end
   table.insert(lookup_values.ServicesUp, string.sub(name, 4))
 end
 
 if string.sub(name, 1, 4) == "dns:" or string.sub(name,1,6)=="dnsup:"
 then
-  table.insert(lookups, LookupDNS)
+  table.insert(self.lookups, LookupDNS)
   if lookup_values.DNSLookups == nil then lookup_values.DNSLookups={} end
   table.insert(lookup_values.DNSLookups, name)
 end
-end
+end,
 
 
 -- this function checks which values have been asked for in a display string, and adds the functions needed to look
 -- those items up into the 'lookups' table.
-function LookupsFromDisplay(display)
-local lookups={}
+extract_lookups=function(self, display_str)
 local var_names
 
--- always lookup basic host details
-table.insert(lookups, LookupHostInfo)
-
-var_names=GetDisplayVars(display)
+var_names=self:get_vars(display_str)
 
 for i, var in ipairs(var_names)
 do
-InitializeLookup(lookups, var)
+self:initialize_lookup(self.lookups, var)
 end
 
 for i,mod in ipairs(lookup_modules)
 do
-  mod:init(lookups, display)
+  mod:init(self.lookups, display_str)
 end
 
-return lookups
-end
+end,
 
 
 
@@ -2464,9 +2889,13 @@ end
 --it first calls all the lookups to get up-to-date values, then
 --builds an output string using those values and does any
 --display translation
-function SubstituteDisplayValues(settings)
+substitute_values=function(self, settings)
 local toks, str, func, feed
 local output=""
+local curr_display=""
+
+
+curr_display=self:get_curr()
 
 -- read up to date values from any key-value files
 for i,feed in ipairs(settings.datafeeds)
@@ -2474,15 +2903,17 @@ do
   if feed.type=="kvfile" then KvFileRead(feed) end
 end
 
--- call alll lookup functions to get up to date values
-for i,func in ipairs(settings.lookups)
+
+-- call all lookup functions to get up to date values
+for i,func in ipairs(self.lookups)
 do
-  func()
+  func(curr_display)
 end
+
 
 -- go through display string extracting any variables and
 -- substituting them for up-to-date values
-toks=strutil.TOKENIZER(settings.display, "$(|^(|@(|>(|)|~a{|}", "ms")
+toks=strutil.TOKENIZER(curr_display, "$(|^(|@(|>(|)|~a{|}", "ms")
 str=toks:next()
 while str ~= nil
 do
@@ -2508,8 +2939,29 @@ end
 
 output=animations:process(output, lookup_counter)
 if string.find(output, '%(') ~= nil then io.stderr:write("ERR: ["..output.."]\n") end
+
 return output
+end,
+
+
+
+init=function(self)
+local i, key, fmt_str
+
+self.lookups={}
+-- always lookup basic host details
+table.insert(self.lookups, LookupHostInfo)
+
+for i, fmt_str in ipairs(self.display_list)
+do
+display:extract_lookups(fmt_str)
 end
+
+
+end
+
+}
+
 
 
 
@@ -2556,22 +3008,14 @@ terminal.utf8(3)
 -- load some initial settings defaults
 SettingsInit()
 
--- init display_translations system
-display_translations=DisplayTranslations()
-
--- parse command-line, then load config files (which might have been specified on command-line)
--- then parse command-line again because we want command-line options to override config-files
-ParseCommandLineConfigFiles(arg)
-LoadConfigFiles()
-ParseCommandLine(arg)
-
 -- load any modules that extend functionality
 LoadModules()
 
-settings.lookups=LookupsFromDisplay(settings.display)
-DataSockAdd(settings.datasock)  
+process.configure("mdwe security=untrusted")
+display:init()
+onclicks:init()
+--DataSockAdd(settings.datasock)  
 Out=OpenOutput(settings)
-poll_streams:add(Out)
 
 if settings.output == "term" 
 then
@@ -2596,16 +3040,16 @@ end
 function UpdateDisplay()
     last_time=now
   
-    str=SubstituteDisplayValues(settings)
+    str=display:substitute_values(settings)
     str=TranslateColorStrings(settings, str)
     str=terminal.format(str)
     display_update_required=false
 
-		-- dwm uses the 'name' value of the root window as it's input, so we have to set that
+    -- dwm uses the 'name' value of the root window as it's input, so we have to set that
     if settings.output == "dwm"
     then
     os.execute("xsetroot -name '"..str.."'")
-		-- for other 'bar' programs we write to standard out
+    -- for other 'bar' programs we write to standard out
     else
     Out:writeln(str)
     Out:flush()
@@ -2615,45 +3059,50 @@ function UpdateDisplay()
 end
 
 
+-- this function reads data from the next active datastream and processes it
+function ProcessStreams()
+local S, str
 
-
--- MAIN STARTS HERE
-
-ApplicationSetup()
-
-while true
-do
-  
-  now=time.secs()
-  if now ~= last_time then display_update_required=true end
-  if display_update_required == true then UpdateDisplay() end
-  
-  
-  -- if we are talking to a shell in a pty  and
-  -- if we have a recent enough libUseful-lua to support signals, then
-  -- watch for sigwinch (signal for 'window size changed') and sig int (ctrl-c)
-  if shell ~= nil
-  then
-  if process.SIGWINCH ~= nil then process.sigwatch(process.SIGWINCH) end
-  if process.SIGINT ~= nil then process.sigwatch(process.SIGINT) end
-  end
-  
   S=poll_streams:select(100)
 
+
+--  io.stderr:write("SELECT: "..tostring(S).."\n")
   if S ~= nil
   then
+	-- if we are running as a bar within a terminal or xterm then we
+	-- need to pass keystrokes through to the shell that's being displayed
+	-- along with our bar on that terminal
     if S==stdio 
     then 
       shell:write(stdio:getch(), 1) 
     elseif S==shell
     then
+      -- if we are running as a bar within a terminal then we read 
+      -- bytes from the shell running in that termina and transfer
+      -- them to the screen. There are two special cases SHELL_CLOSED
+      -- and SHELL_CLS (clear screen) which must be handled here
       shell_result=TerminalReadFromPty()
-      if shell_result==SHELL_CLOSED then break end
+      if shell_result==SHELL_CLOSED then return false end
       if shell_result==SHELL_CLS then display_update_required=true end
     -- activity coming from lemonbar or dzen or other 'bar' program
     elseif S==Out
     then
-    ProcessBarProgramOutput(S:readln())
+       -- read from the bar program
+       str=S:readln()
+       if str == nil
+       then
+	 -- if bar program closes, reopen it	
+       	 poll_streams:delete(Out)
+         Out:close()
+         Out=OpenOutput(settings)
+       else
+         ProcessBarProgramOutput(str)
+       end
+    -- our updater process has input
+    elseif S==updater:get_stream()
+    then
+    updater:process_input() 
+
     -- our listening datasocket has recieved a connection, accept a new client who will
     -- send us messages
     elseif S==datasock:get_stream()
@@ -2668,10 +3117,56 @@ do
     end
   end
 
-HandleShellSignals();
-HandleExitedChildProcesses()
-
+return true
 end
+
+
+function BarmaidMainLoop()
+local S
+
+while true
+do
+  
+  now=time.secs()
+ 
+  -- if we get a sigpipe, we ignore it, we don't want to be shut down by this signal
+  if process.SIGPIPE ~= nil then process.sigwatch(process.SIGPIPE) end
+
+
+  -- if we are talking to a shell in a pty  and
+  -- if we have a recent enough libUseful-lua to support signals, then
+  -- watch for sigwinch (signal for 'window size changed') and sig int (ctrl-c)
+  if shell ~= nil
+  then
+  if process.SIGWINCH ~= nil then process.sigwatch(process.SIGWINCH) end
+  if process.SIGINT ~= nil then process.sigwatch(process.SIGINT) end
+  end
+
+
+  if now ~= last_time then display_update_required=true end
+
+  if display_update_required == true then UpdateDisplay() end
+
+  if updater:required(now) == true then updater:launch() end
+ 
+  if ProcessStreams() ~= true then break end
+
+  HandleShellSignals()
+
+  HandleExitedChildProcesses()
+end
+end
+
+
+
+
+
+-- MAIN STARTS HERE
+
+ApplicationSetup()
+
+
+BarmaidMainLoop()
 
 
 if settings.ypos=="bottom" then term:clear() end

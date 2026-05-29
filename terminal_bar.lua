@@ -27,7 +27,7 @@ function TerminalWrap(steal_lines)
 -- we access them on events
 
   stdio=stream.STREAM("-")
-  shell=stream.STREAM("cmd:/bin/sh", "pty echo")
+  shell=stream.STREAM("cmd:/bin/sh", "rw pty echo stderr2null")
   term=terminal.TERM(stdio)
   if (steal_lines > 0)
   then  

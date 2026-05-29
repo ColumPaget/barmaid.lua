@@ -84,8 +84,8 @@ then
   if display_values["cpu_last_used"] ~= nil
   then
   val=(used - tonumber(display_values["cpu_last_used"])) / (total - display_values["cpu_last_total"])
-  AddDisplayValue("load", val * cpu_count, "%3.1f", nil)
-  AddDisplayValue("load_percent", val * 100.0, "% 3.1f", usage_color_map)
+  display:add_value("load", val * cpu_count, "%3.1f", nil)
+  display:add_value("load_percent", val * 100.0, "% 3.1f", usage_color_map)
   else
   display_values["load"]="---"
   display_values["load_percent"]="---"

@@ -29,7 +29,7 @@ then
   end
   S:close()
 
-	freemem=freemem + cachedmem + buffermem
+  freemem=freemem + cachedmem + buffermem
 else
   availmem=sys.freemem() + sys.buffermem()
   totalmem=sys.totalmem()
@@ -43,19 +43,19 @@ display_values["cachedmem"]=strutil.toMetric(cachedmem)
 
 
 mem_perc=freemem * 100 / totalmem
-AddDisplayValue("free", mem_perc, "% 3.1f", usage_color_map)
+display:add_value("free", mem_perc, "% 3.1f", usage_color_map)
 
 mem_perc=availmem * 100 / totalmem
-AddDisplayValue("avail", mem_perc, "% 3.1f", usage_color_map)
+display:add_value("avail", mem_perc, "% 3.1f", usage_color_map)
 
 mem_perc=100.0 - (freemem * 100 / totalmem)
-AddDisplayValue("mem", mem_perc, "% 3.1f", usage_color_map)
+display:add_value("mem", mem_perc, "% 3.1f", usage_color_map)
 
 mem_perc=100.0 - (availmem * 100 / totalmem)
-AddDisplayValue("memuse", mem_perc, "% 3.1f", usage_color_map)
+display:add_value("memuse", mem_perc, "% 3.1f", usage_color_map)
 
 mem_perc=cachedmem * 100 / totalmem
-AddDisplayValue("cmem", mem_perc, "% 3.1f", usage_color_map)
+display:add_value("cmem", mem_perc, "% 3.1f", usage_color_map)
 
 
 --do all the same for swap
@@ -72,7 +72,7 @@ else
   mem_perc=0
 end
 
-AddDisplayValue("swap", mem_perc, "% 3.1f", usage_color_map)
+display:add_value("swap", mem_perc, "% 3.1f", usage_color_map)
 
 end
 
