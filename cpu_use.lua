@@ -84,8 +84,8 @@ then
   if display_values["cpu_last_used"] ~= nil
   then
   val=(used - tonumber(display_values["cpu_last_used"])) / (total - display_values["cpu_last_total"])
-  display:add_value("load", val * cpu_count, "%3.1f", nil)
-  display:add_value("load_percent", val * 100.0, "% 3.1f", usage_color_map)
+  display:add_value("load", val * cpu_count, "%3.1f", fraction_usage_color_map)
+  display:add_value("load_percent", val * 100.0, "% 3.1f", percent_usage_color_map)
   else
   display_values["load"]="---"
   display_values["load_percent"]="---"
@@ -127,14 +127,31 @@ end
 
 function LookupLoad()
 local toks, str, val
+local load1min, load5min, load15min, cpucount
 
 str=SysFSReadFile("/proc/loadavg")
 toks=strutil.TOKENIZER(str, "\\S")
 
+cpu_count=tonumber(display_values["cpu_count"])
+load1min=tonumber(toks:next())
+load5min=tonumber(toks:next())
+load15min=tonumber(toks:next())
+
 str=toks:next()
-display_values["load1min"]=toks:next()
-display_values["load5min"]=toks:next()
-display_values["load15min"]=toks:next()
+toks=strutil.TOKENIZER(str, "/")
+display_values["runnable_threads"]=toks:next()
+display_values["total_threads"]=toks:next()
+
+if cpu_count ~= nil and cpu_count > 0
+then
+if load1min ~= nil then display:add_value_percent("load1min", load1min, load1min / cpu_count, "%3.1f", fraction_usage_color_map) end
+if load5min ~= nil then display:add_value_percent("load5min", load5min, load5min / cpu_count, "%3.1f", fraction_usage_color_map) end
+if load15min ~= nil then display:add_value_percent("load15min", load15min, load15min / cpu_count, "%3.1f", fraction_usage_color_map) end
+end
+
+--display_values["load1min"]=toks:next()
+--display_values["load5min"]=toks:next()
+--display_values["load15min"]=toks:next()
 
 end
 

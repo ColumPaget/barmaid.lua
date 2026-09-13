@@ -182,3 +182,78 @@ then
 end
 
 end
+
+
+function LookupWifiLevel()
+local S, str, toks, tok, val, percent
+
+
+wifi_db_color_map={
+{value=-999, color="~R"},
+{value=-70, color="~r"},
+{value=-60, color="~y"},
+{value=-50, color="~g"},
+{value=-30, color="~e~g"}
+}
+
+
+
+
+S=stream.STREAM("/proc/net/wireless", "r")
+if S ~= nil
+then
+str=S:readln()
+str=S:readln()
+str=S:readln()
+
+str=strutil.trim(str)
+toks=strutil.TOKENIZER(str, "\\S")
+tok=toks:next() --dev
+tok=toks:next() --flags
+tok=toks:next() --link
+if strutil.strlen(tok) > 0
+then
+
+display_values["wifi_level"]=tok
+
+tok=toks:next() --link
+display_values["wifi_db"]=tok
+display:add_value("wifi_db", tonumber(tok), "%d", wifi_db_color_map)
+
+val=tonumber(tok)
+percent=(val + 100) * 2
+
+display:add_value("wifi_percent", percent, "% 3.1f", percent_usage_color_map)
+
+
+if val >= -30 then display_values["wifi_quality"]="high"
+elseif val >= -50 then display_values["wifi_quality"]="good"
+elseif val >= -60 then display_values["wifi_quality"]="okay"
+elseif val >= -70 then display_values["wifi_quality"]="low"
+elseif val >= -80 then display_values["wifi_quality"]="poor"
+else display_values["wifi_quality"]="bad"
+end
+
+if val >= -30 then display_values["wifi_quality:color"]="~e~ghigh~0"
+elseif val >= -50 then display_values["wifi_quality:color"]="~ggood~0"
+elseif val >= -60 then display_values["wifi_quality:color"]="~yokay~0"
+elseif val >= -70 then display_values["wifi_quality:color"]="~ylow~0"
+elseif val >= -80 then display_values["wifi_quality:color"]="~rpoor~0"
+else display_values["wifi_quality_color"]="~e~rbad~0"
+end
+end
+
+--[[
+−30 dBm 	100% 	1.000 μW 	Maximum Throughput / Perfect Link 	1 meter from router (direct Line of Sight)
+−50 dBm 	100% 	10.00 nW 	Full Speed / Low Latency 	Same room (3–5 meters away)
+−60 dBm 	80% 	1.000 nW 	Gaming Tier / 4K Streaming Ready 	Adjacent room through 1 interior drywall
+−67 dBm 	66% 	0.199 nW 	Enterprise Roaming Boundary Minimum 	Two rooms away or through wood door
+−75 dBm 	50% 	31.6 pW 	Basic Browsing / Occasional Buffering 	Different floor or multiple interior walls
+−80 dBm 	40% 	10.0 pW 	Unstable / Packet Retransmissions 	Edge of building or through exterior brick
+−90 dBm 	20% 	1.0 pW 	Frequent Disconnections / Packet Loss 	Extreme range limit / Dead zone
+]]--
+
+S:close()
+end
+
+end

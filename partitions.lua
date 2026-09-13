@@ -61,7 +61,7 @@ then
     if fs_mount ~= nil
     then
       perc=math.floor( (filesys.fs_used(fs_mount) * 100 / filesys.fs_size(fs_mount)) + 0.5)
-      display:add_value("fs:"..fs_mount, perc, nil, usage_color_map)
+      display:add_value("fs:"..fs_mount, perc, nil, percent_usage_color_map)
     end
 
   str=S:readln()

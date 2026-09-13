@@ -61,8 +61,6 @@ local retval=true
 
 if strutil.strlen(path) ==0 then return false end
 
-print("LOAD: ["..path.."]")
-
 if string.sub(path, 1, 1) == "~" then path=process.getenv("HOME") .. string.sub(path, 2) end
 
 S=stream.STREAM(path, "r")

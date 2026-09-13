@@ -13,7 +13,7 @@ SHELL_OKAY=0
 SHELL_CLOSED=1
 SHELL_CLS=2
 
-version="7.0"
+version="7.1"
 settings={}
 lookup_counter=0
 lookup_values={}
@@ -26,11 +26,18 @@ shell=nil
 stdio=nil
 datasock=nil
 
-usage_color_map={
+percent_usage_color_map={
         {value=0, color="~g"},
         {value=25, color="~y"},
         {value=75, color="~r"},
         {value=90, color="~R"}
+}
+
+fraction_usage_color_map={
+        {value=0, color="~g"},
+        {value=0.25, color="~y"},
+        {value=0.75, color="~r"},
+        {value=0.90, color="~R"}
 }
 
 thermal_color_map={

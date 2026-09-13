@@ -1,4 +1,10 @@
-v7.0
+v7.1 (2026-09-13)
+  * added 'wifi' display values
+  * added 'flagfile' display values
+  * added 'total_threads' and 'runnable_threads' display values
+  * added a proper manpage
+
+v7.0 (2026-05-30)
   * support multiple display strings
   * increase module-ization of code
   * add 'low battery' alert

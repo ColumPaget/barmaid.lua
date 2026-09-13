@@ -99,11 +99,8 @@ end,
 add_value=function(self, name, value, fmtstr, colormap)
 local valstr
 
-  if fmtstr ~= nil 
-  then 
-  valstr=string.format(fmtstr, value) 
-  else
-  valstr=value
+  if fmtstr ~= nil then valstr=string.format(fmtstr, value) 
+  else valstr=value
   end
 
   display_values[name]=valstr
@@ -112,6 +109,20 @@ local valstr
     display_values[name..":color"]=AutoColorValue(value, colormap)..valstr.."~0"
   end
 
+end,
+
+add_value_percent=function(self, name, value, percent, fmtstr, colormap)
+local valstr
+
+  if fmtstr ~= nil then valstr=string.format(fmtstr, value) 
+  else valstr=value
+  end
+
+  display_values[name]=valstr
+  if colormap ~= nil
+  then
+    display_values[name..":color"]=AutoColorValue(percent, colormap)..valstr.."~0"
+  end
 end,
 
 
@@ -217,6 +228,20 @@ then
   if lookup_values.DNSLookups == nil then lookup_values.DNSLookups={} end
   table.insert(lookup_values.DNSLookups, name)
 end
+
+if string.sub(name, 1, 8) == "flagfile"
+then
+  table.insert(self.lookups, FlagFileLookup)
+end
+
+if string.sub(name, 1, 5) == "wifi_"
+then
+   table.insert(self.lookups, LookupWifiLevel)
+end
+ 
+ 
+
+
 end,
 
 

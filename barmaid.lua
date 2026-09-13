@@ -13,7 +13,7 @@ SHELL_OKAY=0
 SHELL_CLOSED=1
 SHELL_CLS=2
 
-version="7.0"
+version="7.1"
 settings={}
 lookup_counter=0
 lookup_values={}
@@ -26,11 +26,18 @@ shell=nil
 stdio=nil
 datasock=nil
 
-usage_color_map={
+percent_usage_color_map={
         {value=0, color="~g"},
         {value=25, color="~y"},
         {value=75, color="~r"},
         {value=90, color="~R"}
+}
+
+fraction_usage_color_map={
+        {value=0, color="~g"},
+        {value=0.25, color="~y"},
+        {value=0.75, color="~r"},
+        {value=0.90, color="~R"}
 }
 
 thermal_color_map={
@@ -1123,8 +1130,6 @@ local retval=true
 
 if strutil.strlen(path) ==0 then return false end
 
-print("LOAD: ["..path.."]")
-
 if string.sub(path, 1, 1) == "~" then path=process.getenv("HOME") .. string.sub(path, 2) end
 
 S=stream.STREAM(path, "r")
@@ -1445,7 +1450,9 @@ print()
 print("Values can be entered into the format string like this: ")
 print("  temp:  $(cpu_temp)")
 print()
-print("The format string should be enclosed in single quotes (') or else the shell will clobber these values.")
+print("Any value name listed here with a ':' at the end of it, expects something added to it as a suffix. examples are: 'fs:' which expects a mount-point as a suffix 'fs:/home' and 'flagfile:' which expects a path to a flag-file as a suffix.")
+print()
+print("If passed on the command-line the format string should be enclosed in single quotes (') or else the shell will clobber these values.")
 print()
 print("User-defined values (including counters) are possible, and can be set using the 'datasock' system (see -help-sock)")
 print()
@@ -1453,48 +1460,61 @@ print("In addition to plain values, barmaid.lua has a number of 'auto-color' val
 print()
 print("Available plain values are:")
 print()
-print("time           display time as %H:%M:%S")
-print("date           display date as %Y/%m/%d")
-print("day_name       display 3-letter day name (Sun, Mon, Tues...)")
-print("month_name     display 3-letter month name")
+print("time            display time as %H:%M:%S")
+print("date            display date as %Y/%m/%d")
+print("day_name        display 3-letter day name (Sun, Mon, Tues...)")
+print("month_name      display 3-letter month name")
 print("hour")
 print("minutes")
 print("seconds")
 print("year")
 print("month")
 print("day")
-print("tztime:<zone>  time in timezone 'zone'")        
-print("tzdate:<zone>  date in timezone 'zone'")        
-print("hostname       system hostname")
-print("arch           system architecture")
-print("os             system os type")
-print("kernel         kernel version number")
-print("uptime         system uptime in $H:%M:%S")
-print("cpu_count      number of cpus")
-print("cpu_temp       cpu temperature in celsius. Currently only works on systems that have x86_pkg_temp or coretemp type sensors. For multicore systems displays the highest across all CPUs.")
-print("mem            percent memory usage")
-print("memuse         percent memory usage calculated from 'availmem' (see discussion below for difference to 'mem')")
-print("usedmem        used memory in metric format")
-print("freemem        free memory in metric format")
-print("availmem       available memory in metric format (see below on difference to freemem)")
-print("totalmem       total memory in metric format")
-print("cachedmem      cached memory in metric format, this can include ramdisks etc")
-print("swap           percent swap space usage")
-print("usedswap       used swap in metric format")
-print("freeswap       free swap in metric format")
-print("totalswap      total swap in metric format")
-print("bat:           percentage remaining battery. This requires a battery number suffix, so `$(bat:0)` for the first battery")
-print("charging:      returns the character '~' (to look like an 'AC' symbol) if battery is charging. Requires a battery number suffix")
-print("bats           info for all batteries. If no batteries present, this will be blank.")
-print("fs:            filesystem use percent. Requires a filesystem mount suffix, so `$(fs:/home)` for filesystem on /home")
-print("ip4address:    ip4address. Requires a network interface suffix, e.g. `$(ip4address:eth0)`")
-print("ip4netmask:    ip4address. Requires a network interface suffix, e.g. `$(ip4address:eth0)`")
-print("ip4broadcast:  ip4address. Requires a network interface suffix, e.g. `$(ip4address:eth0)`")
-print("load_percent   system percentage load (instantaneous cpu usage)")
-print("load           system load (instantaneous cpu usage) in 'top' format")
-print("load1min       1min  load in 'top' format")
-print("load5min       5min  load in 'top' format")
-print("load15min      15min load in 'top' format")
+print("tztime:<zone>   time in timezone 'zone'")        
+print("tzdate:<zone>   date in timezone 'zone'")        
+print("hostname        system hostname")
+print("arch            system architecture")
+print("os              system os type")
+print("kernel          kernel version number")
+print("uptime          system uptime in $H:%M:%S")
+print("cpu_count       number of cpus")
+print("cpu_temp        cpu temperature in celsius. Currently only works on systems that have x86_pkg_temp or coretemp type sensors. For multicore systems displays the highest across all CPUs.")
+print("total_threads   total number of cpu threads on the system")
+print("runnable_threads   number of threads needing cpu-time right now")
+print("mem             percent memory usage")
+print("memuse          percent memory usage calculated from 'availmem' (see discussion below for difference to 'mem')")
+print("usedmem         used memory in metric format")
+print("freemem         free memory in metric format")
+print("availmem        available memory in metric format (see below on difference to freemem)")
+print("totalmem        total memory in metric format")
+print("cachedmem       cached memory in metric format, this can include ramdisks etc")
+print("swap            percent swap space usage")
+print("usedswap        used swap in metric format")
+print("freeswap        free swap in metric format")
+print("totalswap       total swap in metric format")
+print("bat:            percentage remaining battery. This requires a battery number suffix, so `$(bat:0)` for the first battery")
+print("charging:       returns the character '~' (to look like an 'AC' symbol) if battery is charging. Requires a battery number suffix")
+print("bats            info for all batteries. If no batteries present, this will be blank.")
+print("bats_life       remaining life of all batteries at current power draw.")
+print("fs:             filesystem use percent. Requires a filesystem mount suffix, so `$(fs:/home)` for filesystem on /home")
+print("ip4address:     ip4address. Requires a network interface suffix, e.g. `$(ip4address:eth0)`")
+print("ip4netmask:     ip4address. Requires a network interface suffix, e.g. `$(ip4address:eth0)`")
+print("ip4broadcast:   ip4address. Requires a network interface suffix, e.g. `$(ip4address:eth0)`")
+print("load_percent    system percentage load (instantaneous cpu usage)")
+print("load            system load (instantaneous cpu usage) in 'top' format")
+print("load1min        1min  load in 'top' format")
+print("load5min        5min  load in 'top' format")
+print("load15min       15min load in 'top' format")
+print("wifi_level      current wifi strength expressed in dB")
+print("wifi_db         current wifi strength expressed in dB")
+print("wifi_percent    current wifi strength expressed as percentage (can go over 100 due to conversion issues from dB)")
+print("wifi_quality    current wifi strength expressed as 'high', 'good', 'okay', 'low', 'poor' and 'bad'")
+print("flagfile:       suffix is path to flagfile. value is 'y' if flagfile exists 'n' otherwise")
+print("flagfile_when:  suffix is path to flagfile. value is mtime of flagfile as  %H:%M:%S when under a day, and %Y-%m-%d when over a day")
+print("flagfile_mtime: suffix is path to flagfile. value is mtime of flagfile in %Y-%m-%d %H:%M:%S")
+print("flagfile_age:   suffix is path to flagfile. value is time since flagfile created/modified in auto-formatting 'duration' format")
+
+
 print("")
 print("Available auto-colored values are:")
 print()
@@ -1507,12 +1527,8 @@ print("free:color             percent memory free")
 print("avail:color            percent memory available (see discussion below for difference from free)")
 print("cmem:color             percent of memory that is cache")
 print("swap:color             percent swap space usage")
-print("usedswap:color         used swap in metric format")
-print("freeswap:color         free swap in metric format")
-print("totalswap:color        total swap in metric format")
-print("bat:<name>:color       percentage remaining battery. This requires a battery number suffix, so `$(bat:0)` for the first battery")
+print("bat:<num>:color       percentage remaining battery. This requires a battery number suffix, so `$(bat:0)` for the first battery")
 print("bats:color             info for all batteries. If no batteries present, this will be blank.")
-print("bats_life              remaining life of all batteries at current power draw.")
 print("bats_life:color        remaining life of all batteries at current power draw (greem > 1hr, yellow > 0.5 hr, red below 3min)")
 print("fs:<path>:color        filesystem use percent. Requires a filesystem mount suffix, so `$(fs:/home)` for filesystem on /home")
 print("load_percent:color     system percentage load (instantaneous cpu usage)")
@@ -1523,6 +1539,12 @@ print("load15min:color        15min load in 'top' format")
 print("up:<host>:<port>       connect to service at 'host' and 'port'. display 'up' if connection succeeds, 'down' if not")
 print("dns:<host>             lookup 'host' and return its IP address")
 print("dnsup:<host>           lookup 'host' and return 'up' if a value is returned 'down' if not")
+print("wifi_db:color          wifi strength in dB")
+print("wifi_percent:color     wifi strength in percent")
+print("wifi_quality:color     wifi strength expressed as 'high', 'good', 'okay', 'low', 'poor' and 'bad'")
+
+
+
 
 print("")
 
@@ -1988,8 +2010,8 @@ then
   if display_values["cpu_last_used"] ~= nil
   then
   val=(used - tonumber(display_values["cpu_last_used"])) / (total - display_values["cpu_last_total"])
-  display:add_value("load", val * cpu_count, "%3.1f", nil)
-  display:add_value("load_percent", val * 100.0, "% 3.1f", usage_color_map)
+  display:add_value("load", val * cpu_count, "%3.1f", fraction_usage_color_map)
+  display:add_value("load_percent", val * 100.0, "% 3.1f", percent_usage_color_map)
   else
   display_values["load"]="---"
   display_values["load_percent"]="---"
@@ -2031,14 +2053,31 @@ end
 
 function LookupLoad()
 local toks, str, val
+local load1min, load5min, load15min, cpucount
 
 str=SysFSReadFile("/proc/loadavg")
 toks=strutil.TOKENIZER(str, "\\S")
 
+cpu_count=tonumber(display_values["cpu_count"])
+load1min=tonumber(toks:next())
+load5min=tonumber(toks:next())
+load15min=tonumber(toks:next())
+
 str=toks:next()
-display_values["load1min"]=toks:next()
-display_values["load5min"]=toks:next()
-display_values["load15min"]=toks:next()
+toks=strutil.TOKENIZER(str, "/")
+display_values["runnable_threads"]=toks:next()
+display_values["total_threads"]=toks:next()
+
+if cpu_count ~= nil and cpu_count > 0
+then
+if load1min ~= nil then display:add_value_percent("load1min", load1min, load1min / cpu_count, "%3.1f", fraction_usage_color_map) end
+if load5min ~= nil then display:add_value_percent("load5min", load5min, load5min / cpu_count, "%3.1f", fraction_usage_color_map) end
+if load15min ~= nil then display:add_value_percent("load15min", load15min, load15min / cpu_count, "%3.1f", fraction_usage_color_map) end
+end
+
+--display_values["load1min"]=toks:next()
+--display_values["load5min"]=toks:next()
+--display_values["load15min"]=toks:next()
 
 end
 
@@ -2088,19 +2127,19 @@ display_values["cachedmem"]=strutil.toMetric(cachedmem)
 
 
 mem_perc=freemem * 100 / totalmem
-display:add_value("free", mem_perc, "% 3.1f", usage_color_map)
+display:add_value("free", mem_perc, "% 3.1f", percent_usage_color_map)
 
 mem_perc=availmem * 100 / totalmem
-display:add_value("avail", mem_perc, "% 3.1f", usage_color_map)
+display:add_value("avail", mem_perc, "% 3.1f", percent_usage_color_map)
 
 mem_perc=100.0 - (freemem * 100 / totalmem)
-display:add_value("mem", mem_perc, "% 3.1f", usage_color_map)
+display:add_value("mem", mem_perc, "% 3.1f", percent_usage_color_map)
 
 mem_perc=100.0 - (availmem * 100 / totalmem)
-display:add_value("memuse", mem_perc, "% 3.1f", usage_color_map)
+display:add_value("memuse", mem_perc, "% 3.1f", percent_usage_color_map)
 
 mem_perc=cachedmem * 100 / totalmem
-display:add_value("cmem", mem_perc, "% 3.1f", usage_color_map)
+display:add_value("cmem", mem_perc, "% 3.1f", percent_usage_color_map)
 
 
 --do all the same for swap
@@ -2117,7 +2156,7 @@ else
   mem_perc=0
 end
 
-display:add_value("swap", mem_perc, "% 3.1f", usage_color_map)
+display:add_value("swap", mem_perc, "% 3.1f", percent_usage_color_map)
 
 end
 
@@ -2305,6 +2344,81 @@ then
 end
 
 end
+
+
+function LookupWifiLevel()
+local S, str, toks, tok, val, percent
+
+
+wifi_db_color_map={
+{value=-999, color="~R"},
+{value=-70, color="~r"},
+{value=-60, color="~y"},
+{value=-50, color="~g"},
+{value=-30, color="~e~g"}
+}
+
+
+
+
+S=stream.STREAM("/proc/net/wireless", "r")
+if S ~= nil
+then
+str=S:readln()
+str=S:readln()
+str=S:readln()
+
+str=strutil.trim(str)
+toks=strutil.TOKENIZER(str, "\\S")
+tok=toks:next() --dev
+tok=toks:next() --flags
+tok=toks:next() --link
+if strutil.strlen(tok) > 0
+then
+
+display_values["wifi_level"]=tok
+
+tok=toks:next() --link
+display_values["wifi_db"]=tok
+display:add_value("wifi_db", tonumber(tok), "%d", wifi_db_color_map)
+
+val=tonumber(tok)
+percent=(val + 100) * 2
+
+display:add_value("wifi_percent", percent, "% 3.1f", percent_usage_color_map)
+
+
+if val >= -30 then display_values["wifi_quality"]="high"
+elseif val >= -50 then display_values["wifi_quality"]="good"
+elseif val >= -60 then display_values["wifi_quality"]="okay"
+elseif val >= -70 then display_values["wifi_quality"]="low"
+elseif val >= -80 then display_values["wifi_quality"]="poor"
+else display_values["wifi_quality"]="bad"
+end
+
+if val >= -30 then display_values["wifi_quality:color"]="~e~ghigh~0"
+elseif val >= -50 then display_values["wifi_quality:color"]="~ggood~0"
+elseif val >= -60 then display_values["wifi_quality:color"]="~yokay~0"
+elseif val >= -70 then display_values["wifi_quality:color"]="~ylow~0"
+elseif val >= -80 then display_values["wifi_quality:color"]="~rpoor~0"
+else display_values["wifi_quality_color"]="~e~rbad~0"
+end
+end
+
+--[[
+−30 dBm 	100% 	1.000 μW 	Maximum Throughput / Perfect Link 	1 meter from router (direct Line of Sight)
+−50 dBm 	100% 	10.00 nW 	Full Speed / Low Latency 	Same room (3–5 meters away)
+−60 dBm 	80% 	1.000 nW 	Gaming Tier / 4K Streaming Ready 	Adjacent room through 1 interior drywall
+−67 dBm 	66% 	0.199 nW 	Enterprise Roaming Boundary Minimum 	Two rooms away or through wood door
+−75 dBm 	50% 	31.6 pW 	Basic Browsing / Occasional Buffering 	Different floor or multiple interior walls
+−80 dBm 	40% 	10.0 pW 	Unstable / Packet Retransmissions 	Edge of building or through exterior brick
+−90 dBm 	20% 	1.0 pW 	Frequent Disconnections / Packet Loss 	Extreme range limit / Dead zone
+]]--
+
+S:close()
+end
+
+end
 -- functions related to lookups of filesystems/partitions 
 
 function LookupPartitionsGetList(fmt_str)
@@ -2368,7 +2482,7 @@ then
     if fs_mount ~= nil
     then
       perc=math.floor( (filesys.fs_used(fs_mount) * 100 / filesys.fs_size(fs_mount)) + 0.5)
-      display:add_value("fs:"..fs_mount, perc, nil, usage_color_map)
+      display:add_value("fs:"..fs_mount, perc, nil, percent_usage_color_map)
     end
 
   str=S:readln()
@@ -2517,6 +2631,65 @@ function LookupTimes(fmt_str)
 end
 
 
+flagfiles={
+
+lookup_flagfile=function(self, path)
+local mtime
+
+if filesys.exists(path) == true 
+then
+   display_values["flagfile:"..path]="y"
+   
+   mtime=filesys.mtime(path) 
+   if mtime ~= nil and mtime > 0
+   then 
+     diff=time.secs() - mtime
+     display_values["flagfile_age:"..path]=time.format_duration("high+1", diff) 
+     
+     display_values["flagfile_mtime:"..path]=time.formatsecs("%Y-%m-%d %H:%M:%S", mtime) 
+     if diff < (24 * 3600) then display_values["flagfile_when:"..path]=time.formatsecs("%H:%M:%S", mtime) 
+     else display_values["flagfile_when:"..path]=time.formatsecs("%Y-%m-%d", mtime) 
+     end
+   end
+else 
+display_values["flagfile:"..path]="n"
+end
+
+end,
+
+
+
+
+lookup=function(self, fmtstr)
+local i, lookup, host, str
+local flagfile_paths={}
+
+toks=strutil.TOKENIZER(fmtstr, "$(|^(|:|)", "ms")
+str=toks:next()
+while str ~= nil
+do
+	if str == "flagfile"  or str == "flagfile_when" or str == "flagfile_age" or str == "flagfile_mtime"
+	then 
+	toks:next() -- will be ':' sepearator
+	table.insert(flagfile_paths, toks:next())
+	end
+str=toks:next()
+end
+
+for i,str in ipairs(flagfile_paths)
+do
+	self:lookup_flagfile(str)
+end
+
+end
+
+}
+
+
+function FlagFileLookup(fmtstr)
+
+flagfiles:lookup(fmtstr)
+end
 -- these functions relate to loading modules that add features or otherwise change the behavior of barmaid
 
 
@@ -2742,11 +2915,8 @@ end,
 add_value=function(self, name, value, fmtstr, colormap)
 local valstr
 
-  if fmtstr ~= nil 
-  then 
-  valstr=string.format(fmtstr, value) 
-  else
-  valstr=value
+  if fmtstr ~= nil then valstr=string.format(fmtstr, value) 
+  else valstr=value
   end
 
   display_values[name]=valstr
@@ -2755,6 +2925,20 @@ local valstr
     display_values[name..":color"]=AutoColorValue(value, colormap)..valstr.."~0"
   end
 
+end,
+
+add_value_percent=function(self, name, value, percent, fmtstr, colormap)
+local valstr
+
+  if fmtstr ~= nil then valstr=string.format(fmtstr, value) 
+  else valstr=value
+  end
+
+  display_values[name]=valstr
+  if colormap ~= nil
+  then
+    display_values[name..":color"]=AutoColorValue(percent, colormap)..valstr.."~0"
+  end
 end,
 
 
@@ -2860,6 +3044,20 @@ then
   if lookup_values.DNSLookups == nil then lookup_values.DNSLookups={} end
   table.insert(lookup_values.DNSLookups, name)
 end
+
+if string.sub(name, 1, 8) == "flagfile"
+then
+  table.insert(self.lookups, FlagFileLookup)
+end
+
+if string.sub(name, 1, 5) == "wifi_"
+then
+   table.insert(self.lookups, LookupWifiLevel)
+end
+ 
+ 
+
+
 end,
 
 
